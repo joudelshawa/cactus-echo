@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cactus Echo Lab</title>
+<style>
+:root{
+  --bg:#f6f4ee; --surface:#ffffff; --surface-2:#f0ede4; --text:#1f2a24; --muted:#5f6b64;
+  --border:#ddd8cb; --accent:#2f8f5b; --accent-ink:#ffffff; --accent-soft:#e1f2e7;
+  --warn:#b7791f; --warn-soft:#fbf0dc; --danger:#c0392b; --danger-soft:#fbe5e2;
+  --stage:#fdf7ea; --stage-2:#f6ead0; --meter:#2f8f5b; --meter-bg:#e7e2d6;
+  --cactus:#4caf73; --cactus-dark:#2f8f5b; --cactus-light:#7fd19c; --pot:#d9825b; --pot-rim:#c46d47;
+  --face:#1f2a24; --cheek:#f4a7a0; --flower:#f37aa2; --flower-c:#ffd166;
+  --radius:12px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141816; --surface:#1c211e; --surface-2:#242a26; --text:#e8ece9; --muted:#9aa59f;
+    --border:#333b36; --accent:#4cc283; --accent-ink:#0d1a12; --accent-soft:#1d3527;
+    --warn:#e0a84a; --warn-soft:#3a2f1c; --danger:#ef7a6d; --danger-soft:#3d221f;
+    --stage:#1f2420; --stage-2:#262c27; --meter:#4cc283; --meter-bg:#2c332e;
+    --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141816; --surface:#1c211e; --surface-2:#242a26; --text:#e8ece9; --muted:#9aa59f;
+  --border:#333b36; --accent:#4cc283; --accent-ink:#0d1a12; --accent-soft:#1d3527;
+  --warn:#e0a84a; --warn-soft:#3a2f1c; --danger:#ef7a6d; --danger-soft:#3d221f;
+  --stage:#1f2420; --stage-2:#262c27; --meter:#4cc283; --meter-bg:#2c332e;
+  --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+h1{font-size:18px;margin:0}
+h2{font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+header.top .spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;font-weight:600}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.pill[data-state="listening"] .dot{background:var(--accent)}
+.pill[data-state="hearing"] .dot{background:var(--warn);animation:pulse .6s infinite alternate}
+.pill[data-state="replying"] .dot{background:#3b82f6;animation:pulse .4s infinite alternate}
+.pill[data-state="paused"] .dot{background:var(--warn)}
+@keyframes pulse{to{opacity:.3}}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+@media (max-width:960px){.layout{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.stack{display:flex;flex-direction:column;gap:14px}
+.btn{border:1px solid var(--border);background:var(--surface-2);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:600}
+.btn:hover:not(:disabled){filter:brightness(.97)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--text)}
+.btn.danger{background:var(--danger-soft);border-color:var(--danger);color:var(--text)}
+.btn.small{padding:4px 9px;font-size:13px}
+.btn.big{padding:12px 18px;font-size:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grow{flex:1}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+label.field input,label.field textarea{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;color:var(--text)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;width:100%}
+.seg label{flex:1;text-align:center;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:8px 6px;font-weight:600;font-size:14px}
+.seg input:checked+span{background:var(--accent);color:var(--accent-ink)}
+.seg input:disabled+span{opacity:.4}
+.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:-2px}
+.slider{display:grid;grid-template-columns:110px 1fr 64px;gap:8px;align-items:center;font-size:14px}
+.slider output{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
+.toggle input{accent-color:var(--accent);width:18px;height:18px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.note{font-size:13px;padding:8px 10px;border-radius:8px;background:var(--surface-2);color:var(--muted)}
+.note.warn{background:var(--warn-soft);color:var(--text)}
+.kbd{font:12px ui-monospace,Menlo,monospace;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--surface)}
+
+/* stage */
+.stage{position:relative;background:radial-gradient(circle at 50% 35%,var(--stage),var(--stage-2));border:1px solid var(--border);border-radius:var(--radius);min-height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.stage svg{width:min(380px,80%);height:auto;max-height:70vh}
+.stage .nochar{display:none;text-align:center;color:var(--muted);padding:40px}
+.stage.hidechar svg{display:none}
+.stage.hidechar .nochar{display:block}
+.stage .stage-tools{position:absolute;top:10px;right:10px;display:flex;gap:6px}
+.stage .stage-status{position:absolute;left:12px;top:12px}
+.stage:fullscreen{border-radius:0;border:0}
+.stage:fullscreen .stage-tools,.stage:fullscreen .stage-status{display:none}
+.stage:fullscreen svg{width:min(60vh,70vw);max-height:85vh}
+#body{transform-origin:150px 260px;transition:transform .12s ease-out}
+#eyes{transform-origin:150px 140px}
+.meter{position:relative;height:14px;border-radius:7px;background:var(--meter-bg);overflow:hidden}
+.meter .fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--meter);transition:width 50ms linear}
+.meter .mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--danger)}
+.meter .floor{position:absolute;top:0;bottom:0;width:2px;background:var(--muted);opacity:.6}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface-2);border-radius:9px;padding:8px 10px}
+.stat .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .k{font-size:12px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+.log{font:12.5px/1.5 ui-monospace,Menlo,monospace;max-height:220px;overflow:auto;background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+details summary{cursor:pointer;font-weight:600;font-size:14px}
+details[open] summary{margin-bottom:10px}
+.section{margin-top:16px}
+[hidden]{display:none!important}
+.bigreply{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal h3{margin:0 0 8px;font-size:18px}
+.modal p{margin:0 0 18px;color:var(--muted)}
+.btn.danger-solid{background:var(--danger);border-color:var(--danger);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>🌵 Cactus Echo Lab</h1>
+    <span class="pill" id="statePill" data-state="off"><span class="dot"></span><span id="stateText">Microphone off</span></span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="micBtn">Turn on microphone</button>
+  </header>
+
+  <div class="layout">
+    <!-- Stage -->
+    <div class="stack">
+      <div class="stage" id="stage">
+        <div class="stage-status small muted" id="modeBadge">Practice mode: nothing is logged</div>
+        <div class="stage-tools">
+          <button class="btn small" id="fullBtn" title="Show the character full screen (F)">Full screen</button>
+        </div>
+        <svg viewBox="0 0 300 360" aria-label="Cactus character">
+          <ellipse cx="150" cy="345" rx="95" ry="9" fill="#000" opacity=".08"/>
+          <g id="body">
+            <path d="M102 190 H72 Q56 190 56 174 V132" stroke="var(--cactus)" stroke-width="28" stroke-linecap="round" fill="none"/>
+            <path d="M198 168 H226 Q242 168 242 152 V112" stroke="var(--cactus)" stroke-width="28" stroke-linecap="round" fill="none"/>
+            <rect x="92" y="58" width="116" height="210" rx="58" fill="var(--cactus)"/>
+            <path d="M125 80 V250 M150 66 V255 M175 80 V250" stroke="var(--cactus-light)" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+            <g>
+              <circle cx="150" cy="54" r="9" fill="var(--flower)"/>
+              <circle cx="139" cy="60" r="9" fill="var(--flower)"/>
+              <circle cx="161" cy="60" r="9" fill="var(--flower)"/>
+              <circle cx="143" cy="47" r="8" fill="var(--flower)"/>
+              <circle cx="157" cy="47" r="8" fill="var(--flower)"/>
+              <circle cx="150" cy="54" r="6" fill="var(--flower-c)"/>
+            </g>
+            <g id="eyes">
+              <ellipse cx="128" cy="140" rx="9" ry="11" fill="var(--face)"/>
+              <ellipse cx="172" cy="140" rx="9" ry="11" fill="var(--face)"/>
+              <circle cx="131" cy="136" r="3" fill="#fff"/>
+              <circle cx="175" cy="136" r="3" fill="#fff"/>
+            </g>
+            <ellipse cx="114" cy="166" rx="10" ry="6" fill="var(--cheek)" opacity=".8"/>
+            <ellipse cx="186" cy="166" rx="10" ry="6" fill="var(--cheek)" opacity=".8"/>
+            <path id="smile" d="M138 170 Q150 182 162 170" stroke="var(--face)" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <g id="mouthOpen" opacity="0">
+              <ellipse id="mouth" cx="150" cy="176" rx="14" ry="10" fill="var(--face)"/>
+              <ellipse id="tongue" cx="150" cy="182" rx="7" ry="4" fill="#e66a7a"/>
+            </g>
+          </g>
+          <rect x="74" y="250" width="152" height="24" rx="8" fill="var(--pot-rim)"/>
+          <path d="M84 272 H216 L203 342 H97 Z" fill="var(--pot)"/>
+        </svg>
+        <div class="nochar"><div style="font-size:42px">🔈</div>Character hidden: audio only</div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px">
+          <span class="small muted">Mic level <span class="muted">(red line = trigger level, grey = background noise)</span></span>
+          <span class="small muted" id="dbText">–</span>
+        </div>
+        <div class="meter"><div class="fill" id="meterFill"></div><div class="floor" id="meterFloor"></div><div class="mark" id="meterMark"></div></div>
+      </div>
+
+      <div class="card">
+        <h2>Recent events</h2>
+        <div class="log" id="log"><div class="muted">No events yet.</div></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="stack">
+      <div class="card" id="sessionCard">
+        <h2>Session</h2>
+        <div id="sessionForm">
+          <label class="toggle" style="margin-bottom:12px;padding:8px 10px;border-radius:8px;background:var(--surface-2)"><input type="checkbox" id="practiceMute"> Mute the toy until a session starts</label>
+          <div class="grid2">
+            <label class="field">Participant ID<input id="fPid" placeholder="auto if blank" autocomplete="off"></label>
+            <label class="field">Age (months)<input id="fAge" type="number" min="0" max="60" step="0.5" placeholder="optional"></label>
+          </div>
+          <label class="field" style="margin-top:10px">Researcher<input id="fResearcher" placeholder="optional" autocomplete="off"></label>
+          <label class="field" style="margin-top:10px">Notes<textarea id="fNotes" rows="2" placeholder="optional"></textarea></label>
+          <button class="btn primary big" id="startBtn" style="width:100%;margin-top:12px">Start session</button>
+        </div>
+        <div id="sessionActive" hidden>
+          <div class="row" style="justify-content:space-between">
+            <div><div style="font-weight:700;font-size:17px" id="sPid">–</div><div class="small muted" id="sMeta"></div></div>
+            <div style="text-align:right"><div style="font-weight:700;font-size:22px;font-variant-numeric:tabular-nums" id="sTimer">0:00</div><div class="small muted">active time</div></div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn warn grow" id="pauseBtn">Pause</button>
+            <button class="btn primary grow" id="endBtn">End &amp; save</button>
+            <button class="btn danger" id="discardBtn" title="Delete this session without saving">Discard</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input id="markLabel" class="grow" placeholder="Note for a marker (e.g. baby fussing)" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 9px">
+            <button class="btn small" id="markBtn">Add marker</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Reply</h2>
+        <div class="seg" role="radiogroup" aria-label="Condition">
+          <label><input type="radio" name="condition" value="copy"><span>Copy tune</span></label>
+          <label><input type="radio" name="condition" value="change"><span>Change tune</span></label>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Tune change" style="margin-top:8px" id="tuneSeg">
+          <label><input type="radio" name="tune" value="flip"><span>Flip</span></label>
+          <label><input type="radio" name="tune" value="flatten"><span>Flatten</span></label>
+          <label><input type="radio" name="tune" value="random"><span>Random</span></label>
+        </div>
+        <div class="stack" style="gap:8px;margin-top:14px">
+          <div class="slider"><span>Pitch</span><input type="range" id="pitch" min="-12" max="24" step="0.5"><output id="pitch-val"></output></div>
+          <div class="slider"><span>Speed</span><input type="range" id="speed" min="0.5" max="2" step="0.05"><output id="speed-val"></output></div>
+          <div class="slider"><span>Volume</span><input type="range" id="volume" min="0" max="2" step="0.05"><output id="volume-val"></output></div>
+        </div>
+        <div class="row" style="margin-top:12px;justify-content:space-between">
+          <label class="toggle"><input type="checkbox" id="autoReply"> Auto reply</label>
+          <label class="toggle"><input type="checkbox" id="showCharacter"> Show character</label>
+        </div>
+        <label class="toggle" style="margin-top:8px" title="If the baby makes a sound while the toy is talking, the toy stops and replies to that sound instead"><input type="checkbox" id="listenWhileReplying"> Listen while replying (baby can interrupt)</label>
+        <div class="bigreply" style="margin-top:12px">
+          <button class="btn primary big" id="replyBtn" disabled>Reply now</button>
+          <button class="btn big" id="stopBtn" disabled>Stop</button>
+        </div>
+        <div class="small muted" style="margin-top:8px" id="replyHint">Reply now plays the baby's last sound with the current settings.</div>
+        <div class="note" id="lastReply" style="margin-top:8px" hidden></div>
+      </div>
+
+      <div class="card">
+        <h2>Live stats</h2>
+        <div class="stats" id="liveStats"></div>
+        <div class="tablewrap" style="margin-top:10px"><table id="condTable"></table></div>
+      </div>
+
+      <div class="card">
+        <details>
+          <summary>Detection &amp; analysis settings</summary>
+          <div class="stack" style="gap:8px">
+            <div class="slider"><span>Sensitivity</span><input type="range" id="sensitivity" min="4" max="30" step="1"><output id="sensitivity-val"></output></div>
+            <div class="small muted" style="margin-top:-4px">How far above background noise a sound must be (lower = more sensitive).</div>
+            <div class="slider"><span>Min sound</span><input type="range" id="minLen" min="50" max="800" step="10"><output id="minLen-val"></output></div>
+            <div class="slider"><span>End silence</span><input type="range" id="endSilence" min="150" max="1500" step="10"><output id="endSilence-val"></output></div>
+            <div class="small muted" style="margin-top:-4px">Quiet time that ends a sound. Shorter = faster replies but may cut sounds in two.</div>
+            <div class="slider"><span>Max sound</span><input type="range" id="maxLen" min="500" max="8000" step="100"><output id="maxLen-val"></output></div>
+            <div class="slider"><span>Interrupt margin</span><input type="range" id="bargeMargin" min="0" max="30" step="1"><output id="bargeMargin-val"></output></div>
+            <div class="small muted" style="margin-top:-4px">With "Listen while replying" on: how much louder than the toy's own echo a sound must be to interrupt. Raise it if the toy interrupts itself.</div>
+            <div class="slider"><span>Extra delay</span><input type="range" id="replyDelay" min="0" max="3000" step="50"><output id="replyDelay-val"></output></div>
+            <div class="slider"><span>Response window</span><input type="range" id="responseWindow" min="500" max="10000" step="250"><output id="responseWindow-val"></output></div>
+            <div class="small muted" style="margin-top:-4px">A baby sound starting within this time after a reply counts as a response.</div>
+            <div class="slider"><span>Bout gap</span><input type="range" id="boutGap" min="2000" max="30000" step="500"><output id="boutGap-val"></output></div>
+            <div class="small muted" style="margin-top:-4px">Silence longer than this ends an engagement bout.</div>
+          </div>
+        </details>
+        <div class="small muted" style="margin-top:10px">Shortcuts: <span class="kbd">Space</span> reply · <span class="kbd">S</span> stop · <span class="kbd">C</span> switch condition · <span class="kbd">P</span> pause · <span class="kbd">M</span> marker · <span class="kbd">F</span> full screen</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card section">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin:0">Saved sessions</h2>
+      <div class="row">
+        <button class="btn small" id="exportAllEvents">Export all: events CSV</button>
+        <button class="btn small" id="exportAllSummary">Export all: summary CSV</button>
+      </div>
+    </div>
+    <div class="note" style="margin-bottom:10px">Audio is never saved. Sessions (events and timings only) are kept in this browser on this computer. Export CSVs regularly as a backup, because clearing browser data erases them.</div>
+    <div class="tablewrap"><table id="savedTable"></table></div>
+  </div>
+</div>
+
+<div class="modal-back" id="modal" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalBody">
+    <h3 id="modalTitle"></h3>
+    <p id="modalBody"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn" id="modalCancel">Cancel</button>
+      <button class="btn" id="modalOk"></button>
+    </div>
+  </div>
+</div>
+
+<script src="cactus-metrics.js"></script>
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const perfOffset = Date.now() - performance.now();
+const wallOf = p => p + perfOffset;
+
+/* ============================== Storage ============================== */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const K_SESS = 'cactusEcho.sessions.v1', K_CUR = 'cactusEcho.current.v1', K_SET = 'cactusEcho.settings.v1';
+
+/* ============================== Settings ============================= */
+const DEFAULTS = {
+  condition: 'copy', tune: 'flip', pitch: 6, speed: 1, volume: 1, autoReply: true, showCharacter: true, practiceMute: true, listenWhileReplying: false, bargeMargin: 10,
+  sensitivity: 12, minLen: 150, endSilence: 400, maxLen: 3000, replyDelay: 0, responseWindow: 3000, boutGap: 10000
+};
+const settings = Object.assign({}, DEFAULTS, store.get(K_SET, {}));
+const committed = Object.assign({}, settings);
+const saveSettings = () => store.set(K_SET, settings);
+const condKey = (s = settings) => s.condition === 'copy' ? 'copy' : 'change-' + s.tune;
+
+/* ============================== DSP: FFT ============================= */
+const fftCache = {};
+function getFFT(N) {
+  if (fftCache[N]) return fftCache[N];
+  const L = Math.log2(N) | 0, cos = new Float64Array(N / 2), sin = new Float64Array(N / 2), rev = new Uint32Array(N);
+  for (let i = 0; i < N / 2; i++) { cos[i] = Math.cos(2 * Math.PI * i / N); sin[i] = Math.sin(2 * Math.PI * i / N); }
+  for (let i = 0; i < N; i++) { let r = 0; for (let b = 0; b < L; b++) r |= ((i >> b) & 1) << (L - 1 - b); rev[i] = r; }
+  const f = (re, im, inv) => {
+    for (let i = 0; i < N; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    const sg = inv ? -1 : 1;
+    for (let size = 2; size <= N; size <<= 1) {
+      const half = size >> 1, step = N / size;
+      for (let i = 0; i < N; i += size) {
+        for (let j = i, k = 0; j < i + half; j++, k += step) {
+          const a = re[j + half], b = im[j + half];
+          const tr = a * cos[k] + sg * b * sin[k], ti = b * cos[k] - sg * a * sin[k];
+          re[j + half] = re[j] - tr; im[j + half] = im[j] - ti; re[j] += tr; im[j] += ti;
+        }
+      }
+    }
+    if (inv) for (let i = 0; i < N; i++) { re[i] /= N; im[i] /= N; }
+  };
+  return (fftCache[N] = f);
+}
+const hann = N => { const w = new Float64Array(N); for (let i = 0; i < N; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N); return w; };
+
+/* ======================= DSP: pitch tracking (YIN) ===================== */
+const hzToSt = f => 12 * Math.log2(f / 100);   // semitones re 100 Hz
+const stToHz = s => 100 * Math.pow(2, s / 12);
+
+function analyzePitch(x, sr) {
+  // analyse at ~8 kHz (properly low-passed) so a 60–1100 Hz search range stays fast:
+  // covers deep adult voices (testers) as well as infant voices and squeals
+  const D = Math.max(1, Math.round(sr / 8000)), fs = sr / D;
+  const n = Math.floor(x.length / D);
+  const W = Math.round(fs * 0.04), hopS = Math.round(fs * 0.01);
+  const tauMin = Math.floor(fs / 1100), tauMax = Math.ceil(fs / 60);
+  const y = new Float32Array(n + W + tauMax + 2);
+  const xl = D > 1 ? lowpass(x, 0.45 / D) : x;
+  for (let i = 0; i < n; i++) y[i] = xl[i * D];
+  const nF = Math.max(1, Math.ceil(n / hopS));
+  const f0 = new Float32Array(nF), edb = new Float32Array(nF);
+  const d = new Float32Array(tauMax + 2), c = new Float32Array(tauMax + 2);
+  for (let f = 0; f < nF; f++) {
+    const s0 = f * hopS;
+    let e = 0; for (let j = 0; j < W; j++) { const v = y[s0 + j]; e += v * v; }
+    edb[f] = 10 * Math.log10(e / W + 1e-12);
+    for (let tau = 1; tau <= tauMax; tau++) {
+      let sum = 0; for (let j = 0; j < W; j++) { const df = y[s0 + j] - y[s0 + j + tau]; sum += df * df; }
+      d[tau] = sum;
+    }
+    let run = 0; c[0] = 1;
+    for (let tau = 1; tau <= tauMax; tau++) { run += d[tau]; c[tau] = run > 0 ? d[tau] * tau / run : 1; }
+    let best = -1;
+    for (let tau = tauMin; tau <= tauMax; tau++) {
+      if (c[tau] < 0.15) { while (tau + 1 <= tauMax && c[tau + 1] < c[tau]) tau++; best = tau; break; }
+    }
+    if (best < 0) { let m = 1e9, mi = -1; for (let tau = tauMin; tau <= tauMax; tau++) if (c[tau] < m) { m = c[tau]; mi = tau; } if (m < 0.35) best = mi; }
+    if (best > 0) {
+      let sh = 0;
+      if (best > tauMin && best < tauMax) {
+        const a = c[best - 1], b = c[best], cc = c[best + 1], den = a - 2 * b + cc;
+        if (Math.abs(den) > 1e-9) sh = 0.5 * (a - cc) / den;
+        if (Math.abs(sh) > 1) sh = 0;
+      }
+      f0[f] = fs / (best + sh);
+    }
+  }
+  // energy gate
+  let maxE = -1e9; for (let f = 0; f < nF; f++) maxE = Math.max(maxE, edb[f]);
+  for (let f = 0; f < nF; f++) if (edb[f] < maxE - 25) f0[f] = 0;
+  // drop voiced runs shorter than 3 frames
+  for (let f = 0; f < nF;) {
+    if (f0[f] > 0) { let g = f; while (g < nF && f0[g] > 0) g++; if (g - f < 3) for (let k = f; k < g; k++) f0[k] = 0; f = g; } else f++;
+  }
+  // median filter (5) over voiced neighbours, in semitones
+  const st = new Float32Array(nF).fill(NaN);
+  for (let f = 0; f < nF; f++) if (f0[f] > 0) st[f] = hzToSt(f0[f]);
+  const stM = new Float32Array(nF).fill(NaN);
+  for (let f = 0; f < nF; f++) {
+    if (isNaN(st[f])) continue;
+    const w = []; for (let k = f - 2; k <= f + 2; k++) if (k >= 0 && k < nF && !isNaN(st[k])) w.push(st[k]);
+    w.sort((a, b) => a - b); stM[f] = w[w.length >> 1];
+  }
+  // octave-jump repair: a frame far from the surrounding pitch is folded by an octave toward it
+  const stO = Float32Array.from(stM);
+  for (let f = 0; f < nF; f++) {
+    if (isNaN(stM[f])) continue;
+    const w = []; for (let k = f - 10; k <= f + 10; k++) if (k >= 0 && k < nF && !isNaN(stM[k])) w.push(stM[k]);
+    w.sort((a, b) => a - b); const med = w[w.length >> 1];
+    while (stO[f] - med > 8) stO[f] -= 12;
+    while (med - stO[f] > 8) stO[f] += 12;
+  }
+  // edges of a sound (onset / fade-out) are where octave errors cluster in runs too long for the
+  // local check: walk in from each end and fold frames toward the whole sound's median pitch
+  const vIdx = []; for (let f = 0; f < nF; f++) if (!isNaN(stO[f])) vIdx.push(f);
+  if (vIdx.length >= 5) {
+    const gm = vIdx.map(f => stO[f]).sort((a, b) => a - b)[vIdx.length >> 1];
+    const fold = f => { let moved = false; while (stO[f] - gm > 8) { stO[f] -= 12; moved = true; } while (gm - stO[f] > 8) { stO[f] += 12; moved = true; } return moved; };
+    for (const f of vIdx) if (!fold(f)) break;
+    for (let i = vIdx.length - 1; i >= 0; i--) if (!fold(vIdx[i])) break;
+  }
+  stM.set(stO);
+  const hop = hopS * D / sr, t0 = (W / 2) * D / sr;
+  const stInterp = fillGaps(stM);
+  return { st: stM, stInterp, hop, t0, nF, stats: contourStats(stM, hop) };
+}
+
+function fillGaps(st) {
+  const n = st.length, out = new Float32Array(n);
+  let prev = -1;
+  for (let i = 0; i < n; i++) {
+    if (!isNaN(st[i])) {
+      if (prev < 0) for (let k = 0; k < i; k++) out[k] = st[i];
+      else for (let k = prev + 1; k < i; k++) out[k] = st[prev] + (st[i] - st[prev]) * (k - prev) / (i - prev);
+      out[i] = st[i]; prev = i;
+    }
+  }
+  if (prev < 0) out.fill(0); else for (let k = prev + 1; k < n; k++) out[k] = st[prev];
+  return out;
+}
+
+function contourStats(st, hop) {
+  const pts = [];
+  for (let i = 0; i < st.length; i++) if (!isNaN(st[i])) pts.push([i * hop, st[i]]);
+  const nV = pts.length, voicedFrac = st.length ? nV / st.length : 0;
+  if (nV < 3) return { nVoiced: nV, voicedFrac, meanSt: NaN, sd: 0, range: NaN, slope: NaN, shape: 'unvoiced', minSt: NaN, maxSt: NaN };
+  const vals = pts.map(p => p[1]), sorted = [...vals].sort((a, b) => a - b);
+  const q = p => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))];
+  const mean = vals.reduce((a, b) => a + b, 0) / nV;
+  const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / nV);
+  const mt = pts.reduce((a, p) => a + p[0], 0) / nV;
+  let num = 0, den = 0; for (const [t, v] of pts) { num += (t - mt) * (v - mean); den += (t - mt) ** 2; }
+  const slope = den > 0 ? num / den : 0;
+  const lo = q(0.05), hi = q(0.95), range = hi - lo;
+  // shape from thirds
+  const tA = pts[0][0], tB = pts[nV - 1][0], span = Math.max(tB - tA, 1e-6);
+  const thirds = [[], [], []];
+  for (const [t, v] of pts) thirds[Math.min(2, Math.floor(3 * (t - tA) / span))].push(v);
+  const m = thirds.map(a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
+  let shape = 'level';
+  if (range < 1.5 || thirds.some(a => !a.length)) shape = range < 1.5 ? 'flat' : (slope > 3 ? 'rising' : slope < -3 ? 'falling' : 'level');
+  else {
+    const d1 = m[1] - m[0], d2 = m[2] - m[1], tot = m[2] - m[0];
+    if (d1 > 1 && d2 < -1) shape = 'rise-fall';
+    else if (d1 < -1 && d2 > 1) shape = 'fall-rise';
+    else if (tot > 1) shape = 'rising';
+    else if (tot < -1) shape = 'falling';
+  }
+  return { nVoiced: nV, voicedFrac, meanSt: mean, sd, range, slope, shape, minSt: lo, maxSt: hi };
+}
+
+/* =============== DSP: phase vocoder + variable resampling ============== */
+// Shifts pitch by a time-varying ratio rAt(inputSample) and changes playback speed independently.
+function shiftStretch(x, sr, rAt, speed) {
+  const N = sr > 60000 ? 2048 : 1024, Hs = N / 4, half = N / 2, nb = half + 1;
+  const fft = getFFT(N), win = hann(N);
+  const pos = [], rs = [];
+  for (let p = 0; p < x.length;) {
+    pos.push(Math.round(p));
+    const r = rAt(p + half); rs.push(r);
+    p += Math.min(N / 2, Math.max(8, Hs * speed / r));
+  }
+  const K = pos.length, sLen = (K - 1) * Hs + N;
+  const y = new Float64Array(sLen);
+  const re = new Float64Array(N), im = new Float64Array(N);
+  const mag = new Float64Array(nb), ph = new Float64Array(nb), prev = new Float64Array(nb), syn = new Float64Array(nb), tmp = new Float64Array(nb);
+  const peakOf = new Int32Array(nb);
+  for (let k = 0; k < K; k++) {
+    const p0 = pos[k];
+    for (let i = 0; i < N; i++) { const j = p0 + i; re[i] = j < x.length ? x[j] * win[i] : 0; im[i] = 0; }
+    fft(re, im, false);
+    for (let b = 0; b < nb; b++) { mag[b] = Math.hypot(re[b], im[b]); ph[b] = Math.atan2(im[b], re[b]); }
+    if (k === 0) syn.set(ph);
+    else {
+      const Ha = Math.max(1, pos[k] - pos[k - 1]);
+      for (let b = 0; b < nb; b++) {
+        const om = 2 * Math.PI * b / N;
+        let dp = ph[b] - prev[b] - om * Ha;
+        dp -= 2 * Math.PI * Math.round(dp / (2 * Math.PI));
+        tmp[b] = syn[b] + (om + dp / Ha) * Hs;
+      }
+      // identity phase locking (Laroche & Dolson)
+      const peaks = [];
+      for (let b = 1; b < nb - 1; b++) if (mag[b] > mag[b - 1] && mag[b] >= mag[b + 1]) peaks.push(b);
+      if (!peaks.length) peaks.push(0);
+      let pi = 0;
+      for (let b = 0; b < nb; b++) {
+        while (pi + 1 < peaks.length && Math.abs(peaks[pi + 1] - b) <= Math.abs(peaks[pi] - b)) pi++;
+        peakOf[b] = peaks[pi];
+      }
+      for (let b = 0; b < nb; b++) { const pk = peakOf[b]; syn[b] = b === pk ? tmp[b] : tmp[pk] + (ph[b] - ph[pk]); }
+    }
+    prev.set(ph);
+    for (let b = 0; b < nb; b++) { re[b] = mag[b] * Math.cos(syn[b]); im[b] = mag[b] * Math.sin(syn[b]); }
+    for (let b = 1; b < half; b++) { re[N - b] = re[b]; im[N - b] = -im[b]; }
+    fft(re, im, true);
+    const o = k * Hs;
+    for (let i = 0; i < N; i++) y[o + i] += re[i] * win[i] / 1.5;
+  }
+  // anti-alias low-pass before reading faster than real time
+  let maxR = 0; for (const r of rs) maxR = Math.max(maxR, r);
+  const ys = maxR > 1.15 ? lowpass(y, 0.46 / maxR) : y;
+  // variable-rate resampling: raises/lowers pitch by r while undoing the stretch
+  const rAtS = q => {
+    const f = (q - half) / Hs;
+    if (f <= 0) return rs[0];
+    if (f >= K - 1) return rs[K - 1];
+    const i = Math.floor(f), t = f - i; return rs[i] * (1 - t) + rs[i + 1] * t;
+  };
+  let minR = Infinity; for (const r of rs) minR = Math.min(minR, r);
+  const out = new Float32Array(Math.ceil(sLen / Math.max(0.2, minR)) + 8);
+  let q = 0, n = 0;
+  while (q < sLen - 3 && n < out.length) { out[n++] = cubic(ys, q); q += rAtS(q); }
+  return out.subarray(0, n);
+}
+function cubic(y, q) {
+  const i = Math.floor(q), t = q - i;
+  const y0 = y[i - 1] || 0, y1 = y[i] || 0, y2 = y[i + 1] || 0, y3 = y[i + 2] || 0;
+  const a = -0.5 * y0 + 1.5 * y1 - 1.5 * y2 + 0.5 * y3, b = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3, c = -0.5 * y0 + 0.5 * y2;
+  return ((a * t + b) * t + c) * t + y1;
+}
+function lowpass(x, fc) {
+  const M = 64, h = new Float64Array(M + 1); let s = 0;
+  for (let n = 0; n <= M; n++) {
+    const m = n - M / 2, sinc = m === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * m) / (Math.PI * m);
+    const w = 0.42 - 0.5 * Math.cos(2 * Math.PI * n / M) + 0.08 * Math.cos(4 * Math.PI * n / M);
+    h[n] = sinc * w; s += h[n];
+  }
+  for (let n = 0; n <= M; n++) h[n] /= s;
+  const y = new Float64Array(x.length);
+  for (let i = 0; i < x.length; i++) {
+    let acc = 0; for (let n = 0; n <= M; n++) { const j = i - n + M / 2; if (j >= 0 && j < x.length) acc += h[n] * x[j]; }
+    y[i] = acc;
+  }
+  return y;
+}
+
+/* ========================= Reply generation ========================== */
+function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function randomContour(nF, hop, mean, sd) {
+  const step = 0.15, nP = Math.ceil(nF * hop / step) + 2, pts = [];
+  for (let i = 0; i < nP; i++) pts.push(mean + gauss() * sd);
+  const out = new Float32Array(nF);
+  for (let i = 0; i < nF; i++) {
+    const u = i * hop / step, k = Math.floor(u), t = (1 - Math.cos(Math.PI * (u - k))) / 2;
+    out[i] = pts[k] * (1 - t) + pts[k + 1] * t;
+  }
+  return out;
+}
+
+function makeReply(samples, sr, pa, cfg) {
+  const t0 = performance.now();
+  const nF = pa.nF, base = Math.pow(2, cfg.pitch / 12);
+  let logR = new Float32Array(nF).fill(Math.log2(base));
+  let applied = false;
+  if (cfg.condition === 'change' && pa.stats.nVoiced >= 3 && pa.stats.voicedFrac >= 0.15) {
+    const st = pa.stInterp, m = pa.stats.meanSt;
+    const rc = cfg.tune === 'random' ? randomContour(nF, pa.hop, m, Math.max(pa.stats.sd, 2)) : null;
+    for (let i = 0; i < nF; i++) {
+      const target = cfg.tune === 'flip' ? 2 * m - st[i] : cfg.tune === 'flatten' ? m : rc[i];
+      logR[i] += (target - st[i]) / 12;
+    }
+    applied = true;
+  }
+  // clamp to ±2 octaves and smooth (5 frames) to avoid zipper noise
+  const sm = new Float32Array(nF);
+  for (let i = 0; i < nF; i++) {
+    let s = 0, c = 0; for (let k = i - 2; k <= i + 2; k++) if (k >= 0 && k < nF) { s += logR[k]; c++; }
+    sm[i] = Math.max(-2, Math.min(2, s / c));
+  }
+  const ratio = sm.map(v => Math.pow(2, v));
+  const rAt = s => {
+    const f = (s / sr - pa.t0) / pa.hop;
+    if (f <= 0) return ratio[0];
+    if (f >= nF - 1) return ratio[nF - 1];
+    const i = Math.floor(f), t = f - i; return ratio[i] * (1 - t) + ratio[i + 1] * t;
+  };
+  const y = shiftStretch(samples, sr, rAt, cfg.speed);
+  // loudness match + fades
+  const rms = a => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * a[i]; return Math.sqrt(s / Math.max(1, a.length)); };
+  let g = rms(samples) / Math.max(1e-9, rms(y));
+  let pk = 0; for (let i = 0; i < y.length; i++) pk = Math.max(pk, Math.abs(y[i]));
+  if (pk * g > 0.95) g = 0.95 / pk;
+  const fade = Math.min(Math.round(sr * 0.008), y.length >> 2);
+  for (let i = 0; i < y.length; i++) {
+    let w = 1; if (i < fade) w = i / fade; else if (i > y.length - fade) w = (y.length - i) / fade;
+    y[i] *= g * w;
+  }
+  const stOut = new Float32Array(nF).fill(NaN);
+  for (let i = 0; i < nF; i++) if (!isNaN(pa.st[i])) stOut[i] = pa.st[i] + 12 * sm[i];
+  return { buf: y, applied, procMs: performance.now() - t0, outStats: contourStats(stOut, pa.hop / cfg.speed) };
+}
+
+/* ============================== Audio I/O ============================ */
+let ctx = null, micStream = null, outGain = null, analyser = null;
+let micOn = false, playing = false, currentSrc = null, pendingTimer = null, ignoreUntil = 0;
+let lastVoc = null, vocCounter = 0, replyCounter = 0;
+let state = 'off';
+
+let micPromise = null;
+// only ever build one audio pipeline, even if Start is clicked while the mic is still starting
+function startMic() {
+  if (!micPromise) micPromise = startMicOnce().then(ok => { if (!ok) micPromise = null; return ok; });
+  return micPromise;
+}
+async function startMicOnce() {
+  try {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    const code = `class Cap extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(1024);this.n=0;}
+      process(ins){const ch=ins[0]&&ins[0][0];if(ch){for(let i=0;i<ch.length;i++){this.b[this.n++]=ch[i];if(this.n===1024){this.port.postMessage(this.b.slice(0));this.n=0;}}}return true;}}
+      registerProcessor('cap',Cap);`;
+    await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+    const src = ctx.createMediaStreamSource(micStream);
+    const node = new AudioWorkletNode(ctx, 'cap', { numberOfInputs: 1, numberOfOutputs: 1 });
+    const sink = ctx.createGain(); sink.gain.value = 0;
+    src.connect(node); node.connect(sink); sink.connect(ctx.destination);
+    node.port.onmessage = e => onChunk(e.data);
+    outGain = ctx.createGain(); outGain.gain.value = settings.volume;
+    analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
+    outGain.connect(analyser); analyser.connect(ctx.destination);
+    if (ctx.state === 'suspended') await ctx.resume();
+    micOn = true;
+    $('#micBtn').textContent = 'Microphone on'; $('#micBtn').disabled = true; $('#micBtn').classList.remove('primary');
+    setState();
+    return true;
+  } catch (err) {
+    alert('Could not start the microphone: ' + (err && err.message ? err.message : err) + '\n\nOpen this page from http://localhost or https:// and allow microphone access.');
+    return false;
+  }
+}
+
+/* ============================ Sound detection ========================= */
+const det = { inUtt: false, chunks: [], pre: [], preCount: 0, silentMs: 0, voicedMs: 0, startT: 0, noiseDb: -60, peakDb: -100, lastVoicedIdx: 0, hist: [], outHist: [], coup: [], bargeBuf: [], bargeDuring: false };
+const echoBuf = new Float32Array(1024);
+const listeningActive = () => micOn && !(session && session.paused);
+
+function onChunk(buf) {
+  const now = performance.now(), chunkMs = buf.length / ctx.sampleRate * 1000;
+  let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+  const db = 20 * Math.log10(Math.sqrt(s / buf.length) + 1e-9);
+  // background noise = 15th percentile of the last ~5 s of mic levels (excluding the toy's own playback)
+  if (!playing && now >= ignoreUntil && db > -100) {
+    det.hist.push(db); if (det.hist.length > 240) det.hist.shift();
+    if (det.hist.length >= 20) {
+      const s = [...det.hist].sort((a, b) => a - b);
+      det.noiseDb = Math.max(-90, Math.min(-25, s[Math.floor(s.length * 0.15)]));
+    }
+  }
+  const onTh = det.noiseDb + settings.sensitivity, offTh = onTh - 4;
+  const listenOver = settings.listenWhileReplying;
+  // echo estimate while the toy plays: toy output level + learned mic/speaker coupling
+  let echoTh = -Infinity;
+  if (playing && analyser) {
+    analyser.getFloatTimeDomainData(echoBuf);
+    let so = 0; for (let i = 0; i < echoBuf.length; i++) so += echoBuf[i] * echoBuf[i];
+    det.outHist.push(20 * Math.log10(Math.sqrt(so / echoBuf.length) + 1e-9)); if (det.outHist.length > 6) det.outHist.shift();
+    const outDb = Math.max(...det.outHist);
+    if (outDb > -90) {
+      det.coup.push(db - outDb); if (det.coup.length > 400) det.coup.shift();
+      const cs = [...det.coup].sort((a, b) => a - b);
+      const coupling = cs.length >= 10 ? cs[cs.length >> 1] : 0;
+      echoTh = outDb + coupling + settings.bargeMargin;
+    }
+  } else det.outHist = [];
+  updateMeter(db, playing && listenOver ? Math.max(onTh, echoTh) : onTh, det.noiseDb);
+  const blocked = !listeningActive() || now < ignoreUntil || (!listenOver && (playing || pendingTimer));
+  if (blocked) { if (det.inUtt) { det.inUtt = false; setState(); } det.pre = []; det.bargeBuf = []; return; }
+  if (playing) {
+    // toy is talking and "listen while replying" is on: interrupt only on a sustained sound clearly above the echo
+    if (db > Math.max(onTh, echoTh)) det.bargeBuf.push(buf); else det.bargeBuf = [];
+    if (det.bargeBuf.length >= 3) {
+      const n = det.bargeBuf.length;
+      bargeIn();
+      Object.assign(det, { inUtt: true, chunks: det.bargeBuf, preCount: 0, startT: now - n * chunkMs, voicedMs: n * chunkMs, silentMs: 0, peakDb: db, bargeDuring: true });
+      det.lastVoicedIdx = det.chunks.length; det.bargeBuf = []; det.pre = [];
+      setState();
+    }
+    return;
+  }
+  if (!det.inUtt) {
+    if (db > onTh) {
+      if (pendingTimer) { cancelPending(); if (session && !session.paused) log('reply_skipped', { stop_reason: 'barge_in' }); }
+      Object.assign(det, { inUtt: true, chunks: [...det.pre, buf], preCount: det.pre.length, startT: now - chunkMs, voicedMs: chunkMs, silentMs: 0, peakDb: db, bargeDuring: false });
+      det.lastVoicedIdx = det.chunks.length; det.pre = [];
+      setState();
+    } else { det.pre.push(buf); if (det.pre.length > 3) det.pre.shift(); }
+  } else {
+    det.chunks.push(buf);
+    if (db > offTh) { det.silentMs = 0; det.voicedMs += chunkMs; det.lastVoicedIdx = det.chunks.length; det.peakDb = Math.max(det.peakDb, db); }
+    else det.silentMs += chunkMs;
+    const durMs = (det.chunks.length - det.preCount) * chunkMs;
+    if (det.silentMs >= settings.endSilence || durMs >= settings.maxLen) finishUtt(now);
+  }
+}
+
+function finishUtt(now) {
+  const keep = det.chunks.slice(0, Math.min(det.chunks.length, det.lastVoicedIdx + 3));
+  // length from the audio sample count (stays accurate even if the browser delivers chunks in bursts)
+  const chunkMs = 1024 / ctx.sampleRate * 1000;
+  const endT = now - det.silentMs, startT = endT - Math.max(1, det.lastVoicedIdx - det.preCount) * chunkMs;
+  const voicedMs = det.voicedMs, peakDb = det.peakDb, barge = det.bargeDuring;
+  det.inUtt = false; det.chunks = []; det.pre = []; det.bargeDuring = false;
+  if (voicedMs < settings.minLen) { setState(); return; }
+  const len = keep.reduce((a, c) => a + c.length, 0), samples = new Float32Array(len);
+  let o = 0; for (const c of keep) { samples.set(c, o); o += c.length; }
+  handleVocalization(samples, ctx.sampleRate, startT, endT, peakDb, barge);
+}
+
+function handleVocalization(samples, sr, startT, endT, peakDb, barge) {
+  const pa = analyzePitch(samples, sr);
+  const voc = { id: ++vocCounter, samples, sr, pa, startT, endT, peakDb, replied: false, barge: !!barge, interrupted: barge ? lastInterrupted : null };
+  lastVoc = voc;
+  if (session && !session.paused) logVocalization(voc);
+  if (settings.autoReply && !practiceMuted()) scheduleReply(voc, 'auto');
+  setState(); updateButtons();
+}
+const practiceMuted = () => !session && settings.practiceMute;
+
+/* =============================== Replies ============================== */
+function scheduleReply(voc, trigger) {
+  if (!ctx) return;
+  cancelPending();
+  const cfg = { condition: settings.condition, tune: settings.tune, pitch: settings.pitch, speed: settings.speed };
+  const r = makeReply(voc.samples, voc.sr, voc.pa, cfg);
+  const wait = Math.max(0, settings.replyDelay - (performance.now() - voc.endT));
+  const go = () => { pendingTimer = null; playReply(voc, r, cfg, trigger); };
+  if (wait > 4) { pendingTimer = setTimeout(go, wait); setState(); } else go();
+}
+
+function playReply(voc, r, cfg, trigger) {
+  stopPlayback(false);
+  const buf = ctx.createBuffer(1, r.buf.length, ctx.sampleRate);
+  buf.copyToChannel(r.buf, 0);
+  const src = ctx.createBufferSource(); src.buffer = buf; src.connect(outGain);
+  outGain.gain.value = settings.volume;
+  const startT = performance.now() + ((ctx.outputLatency || ctx.baseLatency || 0) * 1000);
+  const ev = (session && !session.paused) ? logReply(voc, r, cfg, trigger, startT, buf.duration * 1000) : null;
+  const id = ++replyCounter;
+  src._ev = ev;
+  src.onended = () => {
+    if (currentSrc !== src) return;
+    currentSrc = null; playing = false;
+    const endT = performance.now();
+    ignoreUntil = endT + 250;
+    if (ev) finalizeReply(ev, endT, src._stopped, src._stopped ? 'researcher' : '');
+    setState(); updateButtons();
+  };
+  showLastReply(voc, r, cfg);
+  currentSrc = src; playing = true; voc.replied = true;
+  src.start();
+  setState(); updateButtons();
+  return id;
+}
+
+// baby spoke over the toy: cut the reply immediately (no post-reply deafness, so the sound keeps being captured)
+let lastInterrupted = null;
+function bargeIn() {
+  const src = currentSrc; if (!src) return;
+  currentSrc = null; playing = false;
+  lastInterrupted = src._ev ? src._ev.reply_id : null;
+  if (src._ev) { finalizeReply(src._ev, performance.now(), true, 'barge_in'); src._ev.interrupted = 1; }
+  try { src.stop(); } catch (e) {}
+  updateButtons();
+}
+// plain-language readout of what the last reply did, so testers can hear-check flip/flatten
+function showLastReply(voc, r, cfg) {
+  const el = $('#lastReply'), i = voc.pa.stats, o = r.outStats;
+  const hz = st => isNaN(st) ? '' : ' at ' + Math.round(stToHz(st)) + ' Hz';
+  const rg = v => isNaN(v) ? '' : ', range ' + v.toFixed(1) + ' st';
+  const name = cfg.condition === 'copy' ? 'Copy' : 'Change · ' + cfg.tune;
+  let txt;
+  if (cfg.condition === 'change' && !r.applied) txt = `${name}: no clear pitch found in that sound (${Math.round(i.voicedFrac * 100)}% pitched), so the tune was NOT changed. It played a plain pitch shift.`;
+  else if (i.shape === 'unvoiced') txt = `${name}: no clear pitch in that sound. Played a plain pitch shift.`;
+  else txt = `${name}: heard ${i.shape}${hz(i.meanSt)}${rg(i.range)} → played ${o.shape}${hz(o.meanSt)}${rg(o.range)}.` +
+    (cfg.condition === 'change' && i.range < 2 ? ' (That sound barely moved in pitch, so the change is subtle.)' : '');
+  el.textContent = 'Last reply · ' + txt; el.hidden = false;
+  el.classList.toggle('warn', cfg.condition === 'change' && (!r.applied || i.range < 2));
+}
+function cancelPending() { if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; return true; } return false; }
+function stopPlayback(userAction) {
+  const hadPending = cancelPending();
+  if (hadPending && userAction && session && !session.paused) log('reply_skipped', {});
+  if (currentSrc) { currentSrc._stopped = !!userAction; try { currentSrc.stop(); } catch (e) {} }
+  setState(); updateButtons();
+}
+
+function manualReply() {
+  if (!micOn || !lastVoc || (session && session.paused) || practiceMuted()) return;
+  scheduleReply(lastVoc, 'manual');
+}
+
+/* =============================== Sessions ============================== */
+let session = null;
+let lastReplyEv = null;     // most recent finished reply event in the session
+const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const randomPid = () => 'P-' + Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function tickAccounting() {
+  if (!session || session.paused || session.endWall) return;
+  const now = Date.now(), key = condKey();
+  session.activeMs += now - session.lastResumeWall;
+  session.condTime[key] = (session.condTime[key] || 0) + (now - session.lastResumeWall);
+  session.lastResumeWall = now;
+}
+const activeMsNow = () => !session ? 0 : session.activeMs + ((session.paused || session.endWall) ? 0 : Date.now() - session.lastResumeWall);
+const sessMs = wall => Math.round(wall - session.startWall);
+
+function persistCurrent() { if (session) { tickAccounting(); store.set(K_CUR, session); } }
+
+function snapshot() {
+  return {
+    condition: settings.condition, tune: settings.condition === 'change' ? settings.tune : '', cond_key: condKey(),
+    pitch_st: settings.pitch, speed: settings.speed, volume: settings.volume,
+    auto_reply: settings.autoReply ? 1 : 0, show_character: settings.showCharacter ? 1 : 0,
+    listen_while_replying: settings.listenWhileReplying ? 1 : 0
+  };
+}
+
+function log(type, fields, wall) {
+  if (!session) return null;
+  wall = wall || Date.now();
+  tickAccounting();
+  const ev = Object.assign({ idx: session.events.length, type, wall_time: new Date(wall).toISOString(), t_session_ms: sessMs(wall), t_active_ms: Math.round(activeMsNow()) }, snapshot(), fields);
+  session.events.push(ev);
+  persistCurrent(); renderLog(); renderStats();
+  return ev;
+}
+
+const r1 = v => (v === undefined || v === null || isNaN(v)) ? '' : Math.round(v * 10) / 10;
+const r0 = v => (v === undefined || v === null || isNaN(v)) ? '' : Math.round(v);
+
+function logVocalization(voc) {
+  const st = voc.pa.stats, startWall = wallOf(voc.startT), endWall = wallOf(voc.endT);
+  const f = {
+    voc_id: voc.id, start_ms: sessMs(startWall), end_ms: sessMs(endWall), duration_ms: r0(endWall - startWall),
+    peak_db: r1(voc.peakDb), voiced_frac: r1(st.voicedFrac * 100) === '' ? '' : Math.round(st.voicedFrac * 100) / 100,
+    f0_mean_hz: r0(stToHz(st.meanSt)), f0_min_hz: r0(stToHz(st.minSt)), f0_max_hz: r0(stToHz(st.maxSt)),
+    f0_range_st: r1(st.range), f0_slope_st_per_s: r1(st.slope), contour_shape: st.shape,
+    follows_reply: 0, latency_after_reply_ms: '', barge_in: voc.barge ? 1 : 0, interrupted_reply_id: voc.barge && voc.interrupted ? voc.interrupted : ''
+  };
+  if (voc.barge) { /* spoke over the toy: counted separately, not as an answer */ }
+  else if (lastReplyEv && lastReplyEv.end_wall) {
+    const lat = startWall - lastReplyEv.end_wall;
+    f.latency_after_reply_ms = r0(lat);
+    if (!lastReplyEv.answered && lat >= -100 && lat <= settings.responseWindow) {
+      f.follows_reply = 1; f.prev_reply_id = lastReplyEv.reply_id;
+      lastReplyEv.answered = 1; lastReplyEv.baby_latency_ms = r0(Math.max(0, lat));
+    }
+  }
+  voc.ev = log('vocalization', f, startWall);
+}
+
+function logReply(voc, r, cfg, trigger, startT, durMs) {
+  const o = r.outStats, startWall = wallOf(startT);
+  const ev = log('reply', {
+    reply_id: ++session.counters.reply, trigger, source_voc_id: voc.id,
+    start_ms: sessMs(startWall), duration_ms: r0(durMs),
+    response_delay_ms: r0(startT - voc.endT), processing_ms: r1(r.procMs),
+    tune_applied: cfg.condition === 'change' ? (r.applied ? 1 : 0) : '',
+    out_f0_mean_hz: r0(stToHz(o.meanSt)), out_f0_range_st: r1(o.range), out_contour_shape: o.shape,
+    stopped: 0, stop_reason: '', interrupted: 0, answered: 0, baby_latency_ms: ''
+  }, Date.now());
+  // make the reply carry the settings it was actually generated with
+  Object.assign(ev, { condition: cfg.condition, tune: cfg.condition === 'change' ? cfg.tune : '', cond_key: condKey(cfg), pitch_st: cfg.pitch, speed: cfg.speed });
+  return ev;
+}
+
+function finalizeReply(ev, endT, stopped, reason) {
+  if (!session || !session.events.includes(ev)) return;
+  ev.end_wall = wallOf(endT); ev.end_ms = sessMs(ev.end_wall); ev.stopped = stopped ? 1 : 0; ev.stop_reason = reason || '';
+  ev.interrupted = reason === 'barge_in' ? 1 : 0;
+  lastReplyEv = ev;
+  persistCurrent(); renderStats();
+}
+
+function startSession() {
+  if (session) return;
+  const go = () => {
+    const now = Date.now();
+    session = {
+      id: uid(), participant_id: $('#fPid').value.trim() || randomPid(),
+      age_months: $('#fAge').value.trim(), researcher: $('#fResearcher').value.trim(), notes: $('#fNotes').value.trim(),
+      startWall: now, endWall: null, paused: false, activeMs: 0, lastResumeWall: now, condTime: {}, events: [], counters: { reply: 0 }
+    };
+    lastReplyEv = null;
+    log('session_start', {});
+    renderSession(); setState(); updateButtons();
+  };
+  if (!micOn) startMic().then(ok => ok && go()); else go();
+}
+
+function togglePause() {
+  if (!session) return;
+  if (!session.paused) {
+    stopPlayback(false);
+    log('pause', {});
+    tickAccounting(); session.paused = true;
+  } else {
+    session.paused = false; session.lastResumeWall = Date.now();
+    log('resume', {});
+  }
+  persistCurrent(); renderSession(); setState(); updateButtons();
+}
+
+function askConfirm(title, body, okLabel, danger) {
+  return new Promise(resolve => {
+    const m = $('#modal'), ok = $('#modalOk'), cancel = $('#modalCancel');
+    $('#modalTitle').textContent = title; $('#modalBody').textContent = body;
+    ok.textContent = okLabel; ok.className = 'btn ' + (danger ? 'danger-solid' : 'primary');
+    m.hidden = false; cancel.focus();
+    const done = v => { m.hidden = true; ok.onclick = cancel.onclick = m.onclick = null; document.removeEventListener('keydown', esc, true); resolve(v); };
+    const esc = e => { if (e.key === 'Escape') { e.stopPropagation(); done(false); } };
+    document.addEventListener('keydown', esc, true);
+    ok.onclick = () => done(true); cancel.onclick = () => done(false);
+    m.onclick = e => { if (e.target === m) done(false); };
+  });
+}
+const modalOpen = () => !$('#modal').hidden;
+
+async function discardSession() {
+  if (!session) return;
+  const n = session.events.filter(e => e.type === 'vocalization').length;
+  const ok = await askConfirm('Discard this session?',
+    `The session for ${session.participant_id} (${n} baby sound${n === 1 ? '' : 's'} logged) will be deleted and NOT saved. This cannot be undone.`,
+    'Yes, discard it', true);
+  if (!ok || !session) return;
+  stopPlayback(false);
+  store.del(K_CUR);
+  session = null; lastReplyEv = null;
+  renderSession(); renderStats(); renderLog(); setState(); updateButtons();
+}
+
+async function endSession() {
+  if (!session) return;
+  if (!await askConfirm('End and save this session?', 'The session for ' + session.participant_id + ' will be saved to the Saved sessions list.', 'End & save', false)) return;
+  if (!session) return;
+  stopPlayback(false);
+  if (session.paused) { session.paused = false; session.lastResumeWall = Date.now(); }
+  log('session_end', {});
+  tickAccounting();
+  session.endWall = Date.now(); session.paused = false;
+  const all = store.get(K_SESS, []); all.push(session);
+  if (!store.set(K_SESS, all)) alert('Could not save to browser storage (it may be full). Use the export buttons now.');
+  savedCache = all;
+  store.del(K_CUR);
+  session = null; lastReplyEv = null;
+  ['#fPid', '#fAge', '#fResearcher', '#fNotes'].forEach(s => $(s).value = '');
+  renderSession(); renderSaved(); renderStats(); renderLog(); setState(); updateButtons();
+}
+
+function addMarker(label) {
+  if (!session) return;
+  log('marker', { label: label || '' });
+  $('#markLabel').value = '';
+}
+
+/* ============================== Metrics ============================== */
+// calculations live in cactus-metrics.js (shared with the report page)
+function summarize(s) {
+  const live = s === session;
+  const condTime = Object.assign({}, s.condTime);
+  if (live && !s.paused) { const k = condKey(); condTime[k] = (condTime[k] || 0) + (Date.now() - s.lastResumeWall); }
+  return CactusMetrics.summarizeSession(s, { boutGap: settings.boutGap, activeMs: live ? activeMsNow() : s.activeMs, endWall: s.endWall || Date.now(), condTime });
+}
+
+/* ================================ CSV ================================ */
+const META = s => ({ session_id: s.id, participant_id: s.participant_id, age_months: s.age_months, researcher: s.researcher, session_notes: s.notes, session_start: new Date(s.startWall).toISOString() });
+const EVENT_COLS = ['session_id', 'participant_id', 'age_months', 'researcher', 'session_notes', 'session_start', 'idx', 'type', 'wall_time', 't_session_ms', 't_active_ms',
+  'condition', 'tune', 'cond_key', 'pitch_st', 'speed', 'volume', 'auto_reply', 'show_character', 'listen_while_replying',
+  'voc_id', 'reply_id', 'trigger', 'source_voc_id', 'prev_reply_id', 'start_ms', 'end_ms', 'duration_ms',
+  'peak_db', 'voiced_frac', 'f0_mean_hz', 'f0_min_hz', 'f0_max_hz', 'f0_range_st', 'f0_slope_st_per_s', 'contour_shape',
+  'follows_reply', 'latency_after_reply_ms', 'barge_in', 'interrupted_reply_id', 'response_delay_ms', 'processing_ms', 'tune_applied',
+  'out_f0_mean_hz', 'out_f0_range_st', 'out_contour_shape', 'stopped', 'stop_reason', 'interrupted', 'answered', 'baby_latency_ms', 'setting', 'old_value', 'new_value', 'label'];
+function toCSV(rows, cols) {
+  if (!cols) { const set = new Set(); rows.forEach(r => Object.keys(r).forEach(k => set.add(k))); cols = [...set]; }
+  const esc = v => { if (v === undefined || v === null) return ''; const s = String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\r\n');
+}
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }));
+  a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const eventRows = s => s.events.map(e => Object.assign({}, META(s), e));
+const summaryRows = s => summarize(s).map(r => Object.assign({}, META(s), { session_end: s.endWall ? new Date(s.endWall).toISOString() : '' }, r));
+const fileStem = s => 'cactus_' + s.participant_id.replace(/[^\w-]+/g, '_') + '_' + new Date(s.startWall).toISOString().slice(0, 16).replace(/[:T]/g, '-');
+const today = () => new Date().toISOString().slice(0, 10);
+
+/* ================================= UI ================================= */
+let savedCache = store.get(K_SESS, []);
+
+function setState() {
+  let s = 'listening', t = 'Listening';
+  if (!micOn) { s = 'off'; t = 'Microphone off'; }
+  else if (session && session.paused) { s = 'paused'; t = 'Paused'; }
+  else if (playing) { s = 'replying'; t = 'Replying'; }
+  else if (pendingTimer) { s = 'replying'; t = 'Reply coming…'; }
+  else if (det.inUtt) { s = 'hearing'; t = 'Hearing a sound'; }
+  else if (practiceMuted()) { s = 'paused'; t = 'Listening (toy muted)'; }
+  else if (!settings.autoReply && lastVoc && !lastVoc.replied) { s = 'hearing'; t = 'Sound heard: press Reply'; }
+  state = s;
+  $('#statePill').dataset.state = s; $('#stateText').textContent = t;
+}
+
+function updateButtons() {
+  const blocked = !micOn || (session && session.paused);
+  $('#replyBtn').disabled = blocked || !lastVoc || practiceMuted();
+  $('#stopBtn').disabled = !playing && !pendingTimer;
+  $$('input[name=tune]').forEach(i => i.disabled = settings.condition !== 'change');
+}
+
+function updateMeter(db, th, floor) {
+  const pct = v => Math.max(0, Math.min(100, (v + 80) / 80 * 100)) + '%';
+  $('#meterFill').style.width = pct(db); $('#meterMark').style.left = pct(th); $('#meterFloor').style.left = pct(floor);
+  $('#dbText').textContent = Math.round(db) + ' dB';
+}
+
+const fmtTime = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+function renderSession() {
+  const active = !!session;
+  $('#sessionForm').hidden = active; $('#sessionActive').hidden = !active;
+  $('#modeBadge').textContent = !active ? 'Practice mode: nothing is logged' : session.paused ? 'Session paused' : 'Recording session: ' + session.participant_id;
+  if (!active) return;
+  $('#sPid').textContent = session.participant_id;
+  $('#sMeta').textContent = [session.age_months && session.age_months + ' mo', session.researcher, new Date(session.startWall).toLocaleString()].filter(Boolean).join(' · ');
+  $('#pauseBtn').textContent = session.paused ? 'Resume' : 'Pause';
+  $('#sTimer').textContent = fmtTime(activeMsNow());
+}
+
+const LABEL = { copy: 'Copy', 'change-flip': 'Change: flip', 'change-flatten': 'Change: flatten', 'change-random': 'Change: random' };
+function renderStats() {
+  const box = $('#liveStats'), tbl = $('#condTable');
+  if (!session) { box.innerHTML = '<div class="muted small" style="grid-column:1/-1">Start a session to see stats.</div>'; tbl.innerHTML = ''; return; }
+  const rows = summarize(session), o = rows[0];
+  const pctv = v => v === '' ? '–' : Math.round(v * 100) + '%';
+  const msv = v => v === '' ? '–' : (v / 1000).toFixed(2) + 's';
+  const tiles = [['Baby sounds', o.vocalizations], ['Replies', o.replies], ['Response rate', pctv(o.response_rate)],
+    ['Baby latency', msv(o.mean_baby_latency_ms)], ['Toy delay', msv(o.mean_toy_delay_ms)], ['Longest chain', o.longest_turn_chain]];
+  box.innerHTML = tiles.map(([k, v]) => `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  const cr = rows.slice(1);
+  tbl.innerHTML = cr.length ? '<tr><th>Condition</th><th class="num">Min</th><th class="num">Sounds/min</th><th class="num">Replies</th><th class="num">Resp. rate</th></tr>' +
+    cr.map(r => `<tr><td>${LABEL[r.group] || r.group}</td><td class="num">${r.active_min}</td><td class="num">${r.voc_per_min === '' ? '–' : r.voc_per_min}</td><td class="num">${r.replies}</td><td class="num">${pctv(r.response_rate)}</td></tr>`).join('') : '';
+}
+
+function describe(e) {
+  const t = fmtTime(e.t_session_ms);
+  switch (e.type) {
+    case 'vocalization': return `${t}  baby sound #${e.voc_id}  ${e.duration_ms}ms  ${e.f0_mean_hz ? e.f0_mean_hz + 'Hz ' : ''}${e.contour_shape}${e.follows_reply ? '  ↩ response (' + e.latency_after_reply_ms + 'ms)' : ''}${e.barge_in ? '  ⚡ interrupted reply #' + e.interrupted_reply_id : ''}`;
+    case 'reply': return `${t}  reply #${e.reply_id} (${e.trigger})  ${LABEL[e.cond_key] || e.cond_key}  ${e.pitch_st > 0 ? '+' : ''}${e.pitch_st}st ×${e.speed}  delay ${e.response_delay_ms}ms${e.tune_applied === 0 ? '  ✗ tune not changed (no clear pitch)' : ''}`;
+    case 'settings_change': return `${t}  ${e.setting}: ${e.old_value} → ${e.new_value}`;
+    case 'condition_change': return `${t}  condition → ${LABEL[e.cond_key] || e.cond_key}`;
+    case 'marker': return `${t}  ★ marker ${e.label}`;
+    default: return `${t}  ${e.type.replace('_', ' ')}`;
+  }
+}
+function renderLog() {
+  const el = $('#log');
+  if (!session || !session.events.length) { el.innerHTML = '<div class="muted">No events yet.</div>'; return; }
+  el.innerHTML = session.events.slice(-40).reverse().map(e => `<div>${escapeHtml(describe(e))}</div>`).join('');
+}
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function renderSaved() {
+  const t = $('#savedTable'), all = savedCache;
+  $('#exportAllEvents').disabled = $('#exportAllSummary').disabled = !all.length;
+  if (!all.length) { t.innerHTML = '<tr><td class="muted">No saved sessions yet.</td></tr>'; return; }
+  t.innerHTML = '<tr><th>Participant</th><th>Age</th><th>Started</th><th class="num">Active</th><th class="num">Sounds</th><th class="num">Replies</th><th class="num">Resp. rate</th><th>Charts</th><th>Export</th></tr>' +
+    all.map((s, i) => {
+      const o = summarize(s)[0];
+      return `<tr><td><b>${escapeHtml(s.participant_id)}</b>${s.researcher ? '<div class="small muted">' + escapeHtml(s.researcher) + '</div>' : ''}</td>
+      <td>${escapeHtml(s.age_months || '')}</td><td>${new Date(s.startWall).toLocaleString()}</td>
+      <td class="num">${fmtTime(s.activeMs)}</td><td class="num">${o.vocalizations}</td><td class="num">${o.replies}</td>
+      <td class="num">${o.response_rate === '' ? '–' : Math.round(o.response_rate * 100) + '%'}</td>
+      <td><a class="btn small primary" href="cactus-report.html?s=${encodeURIComponent(s.id)}" target="_blank" rel="noopener" style="text-decoration:none;white-space:nowrap">View charts ↗</a></td>
+      <td style="white-space:nowrap"><button class="btn small" data-act="ev" data-i="${i}">Events CSV</button>
+      <button class="btn small" data-act="sum" data-i="${i}">Summary CSV</button>
+      <button class="btn small danger" data-act="del" data-i="${i}">Delete</button></td></tr>`;
+    }).reverse().join('');
+}
+
+/* ----------------------------- Bindings ------------------------------ */
+function commitSetting(key) {
+  const from = committed[key], to = settings[key];
+  if (from === to) return;
+  committed[key] = to;
+  if (session && !session.paused) log('settings_change', { setting: key, old_value: from, new_value: to });
+}
+const FMT = {
+  pitch: v => (v > 0 ? '+' : '') + v + ' st', speed: v => '×' + v.toFixed(2), volume: v => Math.round(v * 100) + '%',
+  sensitivity: v => v + ' dB', bargeMargin: v => v + ' dB', minLen: v => v + ' ms', endSilence: v => v + ' ms', maxLen: v => (v / 1000).toFixed(1) + ' s',
+  replyDelay: v => v + ' ms', responseWindow: v => (v / 1000).toFixed(2) + ' s', boutGap: v => (v / 1000).toFixed(1) + ' s'
+};
+for (const key of Object.keys(FMT)) {
+  const el = $('#' + key), out = $('#' + key + '-val');
+  el.value = settings[key]; out.textContent = FMT[key](+el.value);
+  el.addEventListener('input', () => { settings[key] = +el.value; out.textContent = FMT[key](+el.value); if (key === 'volume' && outGain) outGain.gain.value = settings.volume; saveSettings(); });
+  el.addEventListener('change', () => commitSetting(key));
+}
+function setCondition(v) {
+  if (v === settings.condition) return;
+  tickAccounting();
+  settings.condition = v; committed.condition = v; saveSettings();
+  $$('input[name=condition]').forEach(i => i.checked = i.value === v);
+  if (session && !session.paused) log('condition_change', {});
+  updateButtons(); renderStats();
+}
+function setTune(v) {
+  if (v === settings.tune) return;
+  tickAccounting();
+  const from = settings.tune;
+  settings.tune = v; committed.tune = v; saveSettings();
+  $$('input[name=tune]').forEach(i => i.checked = i.value === v);
+  if (session && !session.paused) log(settings.condition === 'change' ? 'condition_change' : 'settings_change', { setting: 'tune', old_value: from, new_value: v });
+  renderStats();
+}
+$$('input[name=condition]').forEach(i => { i.checked = i.value === settings.condition; i.addEventListener('change', () => setCondition(i.value)); });
+$$('input[name=tune]').forEach(i => { i.checked = i.value === settings.tune; i.addEventListener('change', () => setTune(i.value)); });
+function bindToggle(key, after) {
+  const el = $('#' + key); el.checked = settings[key];
+  el.addEventListener('change', () => { settings[key] = el.checked; saveSettings(); commitSetting(key); after && after(); setState(); });
+}
+bindToggle('autoReply');
+bindToggle('listenWhileReplying', () => { det.bargeBuf = []; });
+bindToggle('practiceMute', () => { if (practiceMuted()) stopPlayback(false); updateButtons(); });
+bindToggle('showCharacter', () => $('#stage').classList.toggle('hidechar', !settings.showCharacter));
+$('#stage').classList.toggle('hidechar', !settings.showCharacter);
+
+$('#micBtn').addEventListener('click', () => startMic());
+$('#startBtn').addEventListener('click', startSession);
+$('#pauseBtn').addEventListener('click', togglePause);
+$('#endBtn').addEventListener('click', endSession);
+$('#markBtn').addEventListener('click', () => addMarker($('#markLabel').value.trim()));
+$('#markLabel').addEventListener('keydown', e => { if (e.key === 'Enter') addMarker($('#markLabel').value.trim()); });
+$('#replyBtn').addEventListener('click', manualReply);
+$('#stopBtn').addEventListener('click', () => stopPlayback(true));
+$('#fullBtn').addEventListener('click', toggleFull);
+function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else $('#stage').requestFullscreen().catch(() => {}); }
+
+$('#savedTable').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const s = savedCache[+b.dataset.i]; if (!s) return;
+  if (b.dataset.act === 'ev') download(fileStem(s) + '_events.csv', toCSV(eventRows(s), EVENT_COLS));
+  if (b.dataset.act === 'sum') download(fileStem(s) + '_summary.csv', toCSV(summaryRows(s)));
+  if (b.dataset.act === 'del') {
+    askConfirm('Delete saved session?', 'The saved session for ' + s.participant_id + ' will be permanently deleted. Export it first if you need it. This cannot be undone.', 'Yes, delete it', true)
+      .then(ok => { if (!ok) return; const i = savedCache.indexOf(s); if (i >= 0) { savedCache.splice(i, 1); store.set(K_SESS, savedCache); renderSaved(); } });
+  }
+});
+$('#discardBtn').addEventListener('click', discardSession);
+$('#exportAllEvents').addEventListener('click', () => download('cactus_all_events_' + today() + '.csv', toCSV(savedCache.flatMap(eventRows), EVENT_COLS)));
+$('#exportAllSummary').addEventListener('click', () => download('cactus_all_summary_' + today() + '.csv', toCSV(savedCache.flatMap(summaryRows))));
+
+document.addEventListener('keydown', e => {
+  if (modalOpen() || e.target.closest('input:not([type=range]):not([type=radio]):not([type=checkbox]),textarea,select') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === ' ') { e.preventDefault(); manualReply(); }
+  else if (k === 's' || k === 'escape') stopPlayback(true);
+  else if (k === 'c') setCondition(settings.condition === 'copy' ? 'change' : 'copy');
+  else if (k === 'p') togglePause();
+  else if (k === 'm') addMarker('');
+  else if (k === 'f') toggleFull();
+});
+window.addEventListener('beforeunload', e => { if (session) { persistCurrent(); e.preventDefault(); e.returnValue = ''; } });
+document.addEventListener('visibilitychange', () => persistCurrent());
+
+/* --------------------------- Character anim --------------------------- */
+let mouth = 0, nextBlink = performance.now() + 2500;
+const tdBuf = new Float32Array(1024);
+function frame(now) {
+  let lvl = 0;
+  if (analyser && playing) {
+    analyser.getFloatTimeDomainData(tdBuf);
+    let s = 0; for (let i = 0; i < tdBuf.length; i++) s += tdBuf[i] * tdBuf[i];
+    const db = 20 * Math.log10(Math.sqrt(s / tdBuf.length) + 1e-9);
+    lvl = Math.max(0, Math.min(1, (db + 50) / 38));
+  }
+  mouth += (lvl - mouth) * (lvl > mouth ? 0.6 : 0.25);
+  const open = mouth > 0.04;
+  $('#mouthOpen').setAttribute('opacity', open ? 1 : 0);
+  $('#smile').setAttribute('opacity', open ? 0 : 1);
+  $('#mouth').setAttribute('ry', 3 + mouth * 15); $('#mouth').setAttribute('rx', 11 + mouth * 5);
+  $('#tongue').setAttribute('cy', 176 + mouth * 9);
+  const lean = state === 'hearing' ? 'rotate(-4deg)' : '';
+  $('#body').style.transform = `translateY(${-mouth * 8}px) scale(${1 + mouth * 0.03}) ${lean}`;
+  if (now > nextBlink) { $('#eyes').style.transform = 'scaleY(0.12)'; if (now > nextBlink + 130) { $('#eyes').style.transform = ''; nextBlink = now + 2500 + Math.random() * 3500; } }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+setInterval(() => { if (session) { $('#sTimer').textContent = fmtTime(activeMsNow()); renderStats(); } }, 1000);
+setInterval(() => persistCurrent(), 5000);
+
+/* ----------------------------- Recovery ------------------------------ */
+(function recover() {
+  const cur = store.get(K_CUR, null);
+  if (cur && cur.events) {
+    session = cur;
+    lastReplyEv = [...session.events].reverse().find(e => e.type === 'reply' && e.end_wall) || null;
+    if (!session.paused) { session.paused = true; }
+    log('recovered', { label: 'Page was reloaded; session restored and paused. Press Resume to continue.' });
+  }
+  renderSession(); renderStats(); renderLog(); renderSaved(); setState(); updateButtons();
+})();
+
+// test hooks
+window.cactus = { analyzePitch, makeReply, handleVocalization, summarize, toCSV, eventRows, summaryRows, getSession: () => session, settings, det };
+</script>
+</body>
+</html>

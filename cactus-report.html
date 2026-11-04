@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cactus Session Report</title>
+<style>
+/* Layout: one report column — header, stat tiles, full-width timeline, then paired charts and the table view. */
+:root{
+  --bg:#f6f4ee; --surface:#ffffff; --surface-2:#f0ede4; --text:#1f2a24; --muted:#5f6b64; --faint:#8a948e;
+  --border:#ddd8cb; --grid:#e9e5da; --accent:#2f8f5b; --accent-ink:#ffffff;
+  --c-copy:#2a78d6; --c-flip:#eb6834; --c-flatten:#1baf7a; --c-random:#eda100;
+  --pause:#c9c4b6;
+  --seq-1:#cde2fb; --seq-2:#9ec5f4; --seq-3:#6da7ec; --seq-4:#3987e5; --seq-5:#256abf; --seq-6:#184f95; --seq-7:#0d366b;
+  --radius:12px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141816; --surface:#1c211e; --surface-2:#242a26; --text:#e8ece9; --muted:#9aa59f; --faint:#6f7a74;
+  --border:#333b36; --grid:#2a312d; --accent:#4cc283; --accent-ink:#0d1a12;
+  --c-copy:#3987e5; --c-flip:#d95926; --c-flatten:#199e70; --c-random:#c98500;
+  --pause:#4a524d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141816; --surface:#1c211e; --surface-2:#242a26; --text:#e8ece9; --muted:#9aa59f; --faint:#6f7a74;
+  --border:#333b36; --grid:#2a312d; --accent:#4cc283; --accent-ink:#0d1a12;
+  --c-copy:#3987e5; --c-flip:#d95926; --c-flatten:#199e70; --c-random:#c98500;
+  --pause:#4a524d; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:24px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:26px;margin:2px 0 0;line-height:1.15}
+.meta{color:var(--muted);font-size:14px;margin-top:4px}
+.notes{color:var(--muted);font-size:14px;font-style:italic;margin-top:4px;max-width:70ch}
+select{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;max-width:100%}
+label.pick{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;min-width:0}
+.card h2{font-size:16px;margin:0}
+.card .sub{color:var(--muted);font-size:13.5px;margin:2px 0 12px}
+.tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:480px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.tile .k{font-size:12.5px;color:var(--muted)}
+.tile .v{font-size:24px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .d{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:13.5px;color:var(--muted)}
+.legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend .ring{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--muted);margin-right:6px;vertical-align:-1px}
+.legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:-1px}
+.legend .faded{opacity:.4}
+.legend .hatch{display:inline-block;width:14px;height:12px;margin-right:6px;vertical-align:-1px;background:repeating-linear-gradient(45deg,var(--pause) 0 2px,transparent 2px 5px);border-radius:2px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:inherit}
+.empty{color:var(--muted);font-size:14px;padding:18px 0}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:12.5px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:0}
+table.heat td.cell{text-align:center;font-variant-numeric:tabular-nums;font-weight:600;border:2px solid var(--surface);border-radius:4px;min-width:58px}
+table.heat td.cell small{display:block;font-weight:400;font-size:11px;opacity:.85}
+#tip{position:fixed;pointer-events:none;z-index:20;background:var(--text);color:var(--bg);font-size:12.5px;line-height:1.4;padding:7px 9px;border-radius:7px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+#tip b{font-weight:650}
+.foot{color:var(--faint);font-size:12.5px}
+[hidden]{display:none!important}
+.hit{cursor:default}
+.hit:hover .mk,.hit:focus .mk{filter:brightness(1.08)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div style="min-width:0">
+      <div class="eyebrow">Cactus Echo Lab · session report</div>
+      <h1 id="title">Session report</h1>
+      <div class="meta" id="meta"></div>
+      <div class="notes" id="notes" hidden></div>
+    </div>
+    <label class="pick">Session<select id="picker" aria-label="Choose a session"></select></label>
+  </header>
+  <div id="content" style="display:flex;flex-direction:column;gap:24px"></div>
+</div>
+<div id="tip" hidden></div>
+
+<script src="cactus-metrics.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } } };
+const saved = store.get('cactusEcho.sessions.v1', []);
+const current = store.get('cactusEcho.current.v1', null);
+const appSettings = store.get('cactusEcho.settings.v1', {});
+const BOUT_GAP = appSettings.boutGap || 10000;
+const RESP_WIN = appSettings.responseWindow || 3000;
+
+const COND = [
+  { key: 'copy', label: 'Copy', color: 'var(--c-copy)' },
+  { key: 'change-flip', label: 'Change · flip', color: 'var(--c-flip)' },
+  { key: 'change-flatten', label: 'Change · flatten', color: 'var(--c-flatten)' },
+  { key: 'change-random', label: 'Change · random', color: 'var(--c-random)' }
+];
+const condOf = k => COND.find(c => c.key === k) || { key: k, label: k, color: 'var(--muted)' };
+const SHAPE_LABEL = { rising: 'Rising', falling: 'Falling', 'rise-fall': 'Rise-fall', 'fall-rise': 'Fall-rise', flat: 'Flat', level: 'Level', unvoiced: 'Unvoiced' };
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtT = ms => { const neg = ms < 0; ms = Math.abs(ms); const s = Math.round(ms / 1000); return (neg ? '-' : '') + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const fmtSec = ms => (ms / 1000).toFixed(ms < 10000 ? 2 : 1) + ' s';
+const pct = v => v === '' || v == null ? '–' : Math.round(v * 100) + '%';
+
+/* -------------------------- session picker -------------------------- */
+const all = [...saved].reverse();
+if (current && current.events) all.unshift(Object.assign({}, current, { _live: true }));
+const params = new URLSearchParams(location.search);
+let sel = all.find(s => s.id === params.get('s')) || all[0];
+$('#picker').innerHTML = all.length ? all.map(s => `<option value="${esc(s.id)}">${esc(s.participant_id)} · ${new Date(s.startWall).toLocaleString()}${s._live ? ' (in progress)' : ''}</option>`).join('') : '<option>No sessions</option>';
+if (sel) $('#picker').value = sel.id;
+$('#picker').addEventListener('change', e => {
+  sel = all.find(s => s.id === e.target.value);
+  history.replaceState(null, '', '?s=' + encodeURIComponent(sel.id));
+  render();
+});
+
+/* ------------------------------ derive ------------------------------ */
+function derive(s) {
+  const ev = s.events;
+  const endT = s.endWall ? s.endWall - s.startWall : Math.max(0, ...ev.map(e => e.end_ms || e.t_session_ms || 0));
+  const vocs = ev.filter(e => e.type === 'vocalization');
+  const reps = ev.filter(e => e.type === 'reply');
+  // condition segments and pauses from the event stream
+  const segs = [], pauses = [];
+  let curKey = ev.length ? ev[0].cond_key : 'copy', segStart = 0, pauseStart = null;
+  for (const e of ev) {
+    if (e.type === 'condition_change' || (e.cond_key && e.cond_key !== curKey && e.type !== 'reply')) {
+      if (e.cond_key !== curKey) { segs.push({ key: curKey, start: segStart, end: e.t_session_ms }); curKey = e.cond_key; segStart = e.t_session_ms; }
+    }
+    if ((e.type === 'pause' || e.type === 'recovered') && pauseStart === null) pauseStart = e.t_session_ms;
+    if (e.type === 'resume' && pauseStart !== null) { pauses.push({ start: pauseStart, end: e.t_session_ms }); pauseStart = null; }
+  }
+  segs.push({ key: curKey, start: segStart, end: endT });
+  if (pauseStart !== null) pauses.push({ start: pauseStart, end: endT });
+  const markers = ev.filter(e => e.type === 'marker');
+  const rows = CactusMetrics.summarizeSession(s, { boutGap: BOUT_GAP, activeMs: s._live ? s.activeMs : undefined });
+  const present = COND.filter(c => rows.some(r => r.group === c.key));
+  return { ev, endT: Math.max(endT, 1000), vocs, reps, segs: segs.filter(g => g.end > g.start), pauses, markers, rows, overall: rows[0], present };
+}
+
+/* ------------------------------ helpers ----------------------------- */
+function niceStep(range, maxTicks) {
+  const raw = range / Math.max(1, maxTicks), p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p;
+  return 10 * p;
+}
+function timeTicks(endT, width) {
+  const maxT = Math.max(2, Math.floor(width / 80));
+  const steps = [5, 10, 15, 30, 60, 120, 300, 600, 900, 1800].map(s => s * 1000);
+  const step = steps.find(s => endT / s <= maxT) || 3600000;
+  const out = []; for (let t = 0; t <= endT + 1; t += step) out.push(t); return out;
+}
+// bar with a 4px rounded data end, square at the baseline
+function hbar(x, y, w, h, r = 4) { r = Math.min(r, w / 2, h / 2); if (w <= 0) return ''; return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`; }
+function vbar(x, y, w, h, r = 4) { r = Math.min(r, w / 2, h / 2); if (h <= 0) return ''; return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; }
+const tipAttr = html => `data-tip="${esc(html)}" tabindex="0"`;
+const widthOf = id => Math.max(300, ($(id) || document.body).clientWidth);
+
+/* ------------------------------ render ------------------------------ */
+function render() {
+  const c = $('#content');
+  if (!sel) {
+    $('#title').textContent = 'No saved sessions';
+    $('#meta').textContent = '';
+    c.innerHTML = '<div class="card empty">There are no saved sessions in this browser yet. Run and save a session in the Cactus Echo Lab app, then click "View charts" next to it.</div>';
+    return;
+  }
+  const s = sel, d = derive(s), o = d.overall;
+  document.title = 'Cactus report · ' + s.participant_id;
+  $('#title').textContent = s.participant_id + (s._live ? ' (in progress)' : '');
+  $('#meta').textContent = [s.age_months && s.age_months + ' months', s.researcher, new Date(s.startWall).toLocaleString(), 'total ' + fmtT(d.endT)].filter(Boolean).join(' · ');
+  $('#notes').hidden = !s.notes; $('#notes').textContent = s.notes ? '“' + s.notes + '”' : '';
+
+  const legend = `<div class="legend" aria-label="Condition colors">${d.present.map(cn => `<span><span class="sw" style="background:${cn.color}"></span>${cn.label}</span>`).join('')}</div>`;
+
+  c.innerHTML = `
+  <div class="tiles">
+    ${tile('Active time', fmtT(s.activeMs ?? 0), o.paused_s ? 'paused ' + fmtT(o.paused_s * 1000) : 'no pauses')}
+    ${tile('Baby sounds', o.vocalizations, o.voc_per_min === '' ? '' : o.voc_per_min + ' per min')}
+    ${tile('Toy replies', o.replies, `${o.auto_replies} auto · ${o.manual_replies} manual`)}
+    ${tile('Response rate', pct(o.response_rate), `${o.answered_replies} of ${o.replies} answered`)}
+    ${tile('Longest chain', o.longest_turn_chain, 'turns in a row')}
+    ${tile('Baby latency', o.mean_baby_latency_ms === '' ? '–' : fmtSec(o.mean_baby_latency_ms), 'mean time to answer')}
+  </div>
+
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:baseline">
+      <div><h2>Session timeline</h2><div class="sub">Every baby sound and toy reply, with the condition in effect. Hover a mark for details.</div></div>
+      <div class="legend">${d.present.map(cn => `<span><span class="sw" style="background:${cn.color}"></span>${cn.label}</span>`).join('')}
+        <span><span class="sw" style="background:var(--muted)"></span>Response to toy</span>
+        <span><span class="sw faded" style="background:var(--muted)"></span>Not a response</span>
+        <span><span class="hatch"></span>Paused</span></div>
+    </div>
+    <div class="chart" id="timeline"></div>
+  </div>
+
+  <div class="grid3">
+    <div class="card"><h2>Response rate</h2><div class="sub">Share of toy replies the baby answered within ${(RESP_WIN / 1000).toFixed(1)} s</div><div class="chart" id="b-rate"></div></div>
+    <div class="card"><h2>Baby sounds per minute</h2><div class="sub">Rate while each condition was active</div><div class="chart" id="b-vpm"></div></div>
+    <div class="card"><h2>Time to answer</h2><div class="sub">Mean baby latency after a reply ends</div><div class="chart" id="b-lat"></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h2>Baby sounds over time</h2><div class="sub" id="bins-sub"></div>${legend}<div class="chart" id="bins" style="margin-top:8px"></div></div>
+    <div class="card"><h2>Pitch over time</h2><div class="sub">Average pitch of each baby sound and each toy reply</div>
+      <div class="legend"><span><span class="dot"></span>Baby sound</span><span><span class="ring"></span>Toy reply</span><span>· color = condition</span></div>
+      <div class="chart" id="pitch" style="margin-top:8px"></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h2>Baby's tune shapes</h2><div class="sub">Share of each condition's baby sounds with each shape</div><div class="tablewrap" id="heat-baby"></div></div>
+    <div class="card"><h2>What the toy played</h2><div class="sub">Tune shape of the toy's replies. Copy should match the baby's mix, flatten should be mostly flat, and flip should mirror each sound (hover the toy's marks in the timeline to compare one by one).</div><div class="tablewrap" id="heat-toy"></div></div>
+  </div>
+
+  <div class="card"><h2>Summary by condition</h2><div class="sub">The same numbers as the summary CSV</div><div class="tablewrap" id="table"></div></div>
+
+  <div class="foot">Response window ${(RESP_WIN / 1000).toFixed(1)} s · bout gap ${(BOUT_GAP / 1000).toFixed(0)} s (current app settings). ${o.bouts} engagement bout${o.bouts === 1 ? '' : 's'}, longest ${o.longest_bout_s || 0} s. Data comes from this browser only.</div>`;
+
+  drawTimeline(d); drawBars(d); drawBins(d); drawPitch(d); drawHeat(d); drawTable(d);
+}
+function tile(k, v, dsc) { return `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${esc(dsc)}</div></div>`; }
+
+/* ---------------------------- timeline ------------------------------ */
+function drawTimeline(d) {
+  const W = widthOf('#timeline'), L = 64, R = 14, top = 6;
+  const iw = W - L - R, x = t => L + Math.max(0, Math.min(1, t / d.endT)) * iw;
+  const laneC = { y: top, h: 22 }, laneB = { y: top + 34, h: 40 }, laneT = { y: top + 86, h: 40 }, axisY = top + 140, H = axisY + 34;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of baby sounds and toy replies">
+    <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="6" fill="var(--pause)"/></pattern></defs>`;
+  for (const t of timeTicks(d.endT, iw)) svg += `<line x1="${x(t)}" x2="${x(t)}" y1="${laneB.y - 4}" y2="${axisY}" stroke="var(--grid)"/><text x="${x(t)}" y="${axisY + 16}" text-anchor="middle" font-size="11.5" fill="var(--muted)">${fmtT(t)}</text>`;
+  svg += `<line x1="${L}" x2="${L + iw}" y1="${axisY}" y2="${axisY}" stroke="var(--border)"/>`;
+  const lab = (y, t) => `<text x="${L - 10}" y="${y}" text-anchor="end" font-size="12" fill="var(--muted)" dominant-baseline="middle">${t}</text>`;
+  svg += lab(laneC.y + laneC.h / 2, 'Condition') + lab(laneB.y + laneB.h / 2, 'Baby') + lab(laneT.y + laneT.h / 2, 'Toy');
+  // condition band (2px surface gap between segments)
+  for (const g of d.segs) {
+    const cn = condOf(g.key), x0 = x(g.start) + 1, w = Math.max(1, x(g.end) - x(g.start) - 2);
+    svg += `<g class="hit" ${tipAttr(`<b>${cn.label}</b><br>${fmtT(g.start)} – ${fmtT(g.end)}`)}><rect class="mk" x="${x0}" y="${laneC.y}" width="${w}" height="${laneC.h}" rx="4" fill="${cn.color}"/>`;
+    if (w > cn.label.length * 6.6 + 12) svg += `<text x="${x0 + 8}" y="${laneC.y + laneC.h / 2}" dominant-baseline="middle" font-size="11.5" font-weight="600" fill="#fff">${cn.label}</text>`;
+    svg += `</g>`;
+  }
+  // pauses across the lanes
+  for (const p of d.pauses) svg += `<g class="hit" ${tipAttr(`<b>Paused</b><br>${fmtT(p.start)} – ${fmtT(p.end)}`)}><rect x="${x(p.start)}" y="${laneB.y - 4}" width="${Math.max(2, x(p.end) - x(p.start))}" height="${laneT.y + laneT.h - laneB.y + 8}" fill="url(#hatch)" opacity=".9"/></g>`;
+  // baby sounds
+  for (const v of d.vocs) {
+    const cn = condOf(v.cond_key), x0 = x(v.start_ms), w = Math.max(3, x(v.end_ms) - x0);
+    const tip = `<b>Baby sound #${v.voc_id}</b> · ${cn.label}<br>${fmtT(v.start_ms)} · ${v.duration_ms} ms<br>${v.f0_mean_hz ? v.f0_mean_hz + ' Hz · ' : ''}${SHAPE_LABEL[v.contour_shape] || v.contour_shape}` +
+      (v.follows_reply ? `<br>Answered the toy after ${fmtSec(+v.latency_after_reply_ms)}` : v.barge_in ? `<br>Interrupted reply #${v.interrupted_reply_id}` : '<br>Not a response');
+    svg += `<g class="hit" ${tipAttr(tip)}><rect x="${x0 - 3}" y="${laneB.y - 2}" width="${w + 6}" height="${laneB.h + 4}" fill="transparent"/><rect class="mk" x="${x0}" y="${laneB.y}" width="${w}" height="${laneB.h}" rx="${Math.min(4, w / 2)}" fill="${cn.color}" opacity="${v.follows_reply || v.barge_in ? 1 : .4}"/>`;
+    if (v.barge_in) svg += `<path d="M${x0 + w / 2 - 5},${laneB.y - 9} h10 l-5,7z" fill="var(--text)"/>`;
+    svg += `</g>`;
+  }
+  // toy replies
+  for (const r of d.reps) {
+    const cn = condOf(r.cond_key), x0 = x(r.start_ms), end = r.end_ms ?? (r.start_ms + (+r.duration_ms || 0)), w = Math.max(3, x(end) - x0);
+    const tip = `<b>Toy reply #${r.reply_id}</b> · ${cn.label} (${r.trigger})<br>${fmtT(r.start_ms)} · ${r.pitch_st > 0 ? '+' : ''}${r.pitch_st} st · ×${r.speed}<br>Delay after baby: ${r.response_delay_ms} ms` +
+      (r.out_contour_shape ? `<br>Played tune: ${SHAPE_LABEL[r.out_contour_shape] || r.out_contour_shape}` : '') +
+      (r.answered ? `<br>Baby answered after ${fmtSec(+r.baby_latency_ms)}` : '<br>Not answered') + (r.stopped ? `<br>Stopped (${r.stop_reason || 'researcher'})` : '');
+    svg += `<g class="hit" ${tipAttr(tip)}><rect x="${x0 - 3}" y="${laneT.y - 2}" width="${w + 6}" height="${laneT.h + 4}" fill="transparent"/><rect class="mk" x="${x0}" y="${laneT.y}" width="${w}" height="${laneT.h}" rx="${Math.min(4, w / 2)}" fill="${cn.color}" opacity="${r.answered ? 1 : .4}"/></g>`;
+  }
+  // markers on the axis
+  for (const m of d.markers) svg += `<g class="hit" ${tipAttr(`<b>Marker</b> · ${fmtT(m.t_session_ms)}<br>${esc(m.label || '(no note)')}`)}><circle cx="${x(m.t_session_ms)}" cy="${axisY}" r="9" fill="transparent"/><path d="M${x(m.t_session_ms)},${axisY - 6} l5,6 -5,6 -5,-6z" fill="var(--text)" stroke="var(--surface)" stroke-width="2"/></g>`;
+  svg += `</svg>`;
+  $('#timeline').innerHTML = d.vocs.length || d.reps.length ? svg : '<div class="empty">No baby sounds or replies were logged in this session.</div>';
+}
+
+/* ------------------------- condition bars --------------------------- */
+function drawBars(d) {
+  const rows = d.present.map(cn => ({ cn, r: d.rows.find(x => x.group === cn.key) }));
+  hbars('#b-rate', rows.map(({ cn, r }) => ({ cn, v: r.response_rate === '' ? null : r.response_rate, label: pct(r.response_rate), tip: `${r.answered_replies} of ${r.replies} replies answered` })), 1);
+  hbars('#b-vpm', rows.map(({ cn, r }) => ({ cn, v: r.voc_per_min === '' ? null : r.voc_per_min, label: r.voc_per_min === '' ? '–' : r.voc_per_min.toFixed(1), tip: `${r.vocalizations} sounds in ${r.active_min} min` })));
+  hbars('#b-lat', rows.map(({ cn, r }) => ({ cn, v: r.mean_baby_latency_ms === '' ? null : r.mean_baby_latency_ms / 1000, label: r.mean_baby_latency_ms === '' ? '–' : fmtSec(r.mean_baby_latency_ms), tip: `based on ${r.answered_replies} answered repl${r.answered_replies === 1 ? 'y' : 'ies'}` })));
+}
+function hbars(id, items, fixedMax) {
+  if (!items.length) { $(id).innerHTML = '<div class="empty">No data.</div>'; return; }
+  const W = widthOf(id), L = 112, R = 52, bh = 22, gap = 14, H = items.length * (bh + gap) + 4;
+  const max = fixedMax || Math.max(...items.map(i => i.v || 0), 0.0001) * 1.05;
+  const iw = W - L - R;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  svg += `<line x1="${L}" x2="${L}" y1="0" y2="${H - 4}" stroke="var(--border)"/>`;
+  items.forEach((it, i) => {
+    const y = i * (bh + gap) + 2, w = it.v == null ? 0 : Math.max(2, it.v / max * iw);
+    svg += `<g class="hit" ${tipAttr(`<b>${it.cn.label}</b><br>${it.label} · ${esc(it.tip)}`)}>
+      <rect x="0" y="${y - gap / 2}" width="${W}" height="${bh + gap}" fill="transparent"/>
+      <text x="${L - 10}" y="${y + bh / 2}" text-anchor="end" dominant-baseline="middle" font-size="12.5" fill="var(--text)">${it.cn.label.startsWith('Change · ') ? it.cn.label.slice(9, 10).toUpperCase() + it.cn.label.slice(10) : it.cn.label}</text>
+      <path class="mk" d="${hbar(L, y, w, bh)}" fill="${it.cn.color}"/>
+      <text x="${L + w + 8}" y="${y + bh / 2}" dominant-baseline="middle" font-size="12.5" font-weight="600" fill="var(--text)">${it.label}</text></g>`;
+  });
+  $(id).innerHTML = svg + '</svg>';
+}
+
+/* ----------------------- sounds over time --------------------------- */
+function drawBins(d) {
+  const sizes = [15, 30, 60, 120, 300, 600].map(s => s * 1000);
+  const bin = sizes.find(b => d.endT / b <= 30) || 1200000;
+  const n = Math.max(1, Math.ceil(d.endT / bin));
+  $('#bins-sub').textContent = `Number of baby sounds in each ${bin >= 60000 ? bin / 60000 + '-minute' : bin / 1000 + '-second'} window, split by condition`;
+  if (!d.vocs.length) { $('#bins').innerHTML = '<div class="empty">No baby sounds logged.</div>'; return; }
+  const counts = Array.from({ length: n }, () => ({}));
+  for (const v of d.vocs) { const i = Math.min(n - 1, Math.max(0, Math.floor(v.start_ms / bin))); counts[i][v.cond_key] = (counts[i][v.cond_key] || 0) + 1; }
+  const tot = counts.map(c => Object.values(c).reduce((a, b) => a + b, 0));
+  const max = Math.max(1, ...tot), step = niceStep(max, 4), ymax = Math.ceil(max / step) * step;
+  const W = widthOf('#bins'), L = 34, R = 8, T = 8, H = 220, B = 26, ih = H - T - B, iw = W - L - R;
+  const slot = iw / n, bw = Math.min(24, slot * 0.7);
+  const y = v => T + ih - v / ymax * ih;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Baby sounds over time">`;
+  for (let v = 0; v <= ymax + 1e-9; v += step) svg += `<line x1="${L}" x2="${L + iw}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? 'var(--border)' : 'var(--grid)'}"/><text x="${L - 6}" y="${y(v)}" text-anchor="end" dominant-baseline="middle" font-size="11" fill="var(--muted)">${v}</text>`;
+  const labelEvery = Math.ceil(n / Math.max(2, Math.floor(iw / 60)));
+  counts.forEach((c, i) => {
+    const x0 = L + i * slot + (slot - bw) / 2;
+    let acc = 0; const parts = COND.filter(cn => c[cn.key]).map(cn => ({ cn, v: c[cn.key] }));
+    const tip = `<b>${fmtT(i * bin)} – ${fmtT((i + 1) * bin)}</b><br>` + (parts.length ? parts.map(p => `${p.cn.label}: ${p.v}`).join('<br>') : 'No baby sounds');
+    svg += `<g class="hit" ${tipAttr(tip)}><rect x="${L + i * slot}" y="${T}" width="${slot}" height="${ih}" fill="transparent"/>`;
+    parts.forEach((p, j) => {
+      const h = p.v / ymax * ih, yTop = y(acc + p.v), isTop = j === parts.length - 1;
+      const gapPx = j > 0 ? 2 : 0;
+      svg += isTop ? `<path class="mk" d="${vbar(x0, yTop, bw, h - gapPx)}" fill="${p.cn.color}"/>` : `<rect class="mk" x="${x0}" y="${yTop}" width="${bw}" height="${Math.max(0, h - gapPx)}" fill="${p.cn.color}"/>`;
+      acc += p.v;
+    });
+    svg += `</g>`;
+    if (i % labelEvery === 0) svg += `<text x="${L + i * slot + slot / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtT(i * bin)}</text>`;
+  });
+  $('#bins').innerHTML = svg + '</svg>';
+}
+
+/* ---------------------------- pitch --------------------------------- */
+function drawPitch(d) {
+  const pts = [
+    ...d.vocs.filter(v => +v.f0_mean_hz > 0).map(v => ({ t: v.start_ms, hz: +v.f0_mean_hz, cn: condOf(v.cond_key), kind: 'baby', e: v })),
+    ...d.reps.filter(r => +r.out_f0_mean_hz > 0).map(r => ({ t: r.start_ms, hz: +r.out_f0_mean_hz, cn: condOf(r.cond_key), kind: 'toy', e: r }))
+  ];
+  if (!pts.length) { $('#pitch').innerHTML = '<div class="empty">No sounds with a measurable pitch.</div>'; return; }
+  const lo = Math.min(...pts.map(p => p.hz)), hi = Math.max(...pts.map(p => p.hz));
+  const step = niceStep(Math.max(50, hi - lo), 4), y0 = Math.max(0, Math.floor((lo - step * 0.3) / step) * step), y1 = Math.ceil((hi + step * 0.3) / step) * step;
+  const W = widthOf('#pitch'), L = 48, R = 12, T = 10, H = 220, B = 26, ih = H - T - B, iw = W - L - R;
+  const x = t => L + Math.max(0, Math.min(1, t / d.endT)) * iw, y = hz => T + ih - (hz - y0) / (y1 - y0) * ih;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pitch of baby sounds and toy replies over time">`;
+  for (let v = y0; v <= y1 + 1e-9; v += step) svg += `<line x1="${L}" x2="${L + iw}" y1="${y(v)}" y2="${y(v)}" stroke="${v === y0 ? 'var(--border)' : 'var(--grid)'}"/><text x="${L - 6}" y="${y(v)}" text-anchor="end" dominant-baseline="middle" font-size="11" fill="var(--muted)">${v} Hz</text>`;
+  for (const t of timeTicks(d.endT, iw)) svg += `<text x="${x(t)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtT(t)}</text>`;
+  for (const p of pts.sort((a, b) => (a.kind === 'toy') - (b.kind === 'toy'))) {
+    const tip = p.kind === 'baby'
+      ? `<b>Baby sound #${p.e.voc_id}</b> · ${p.cn.label}<br>${fmtT(p.t)} · ${p.hz} Hz · ${SHAPE_LABEL[p.e.contour_shape] || ''}`
+      : `<b>Toy reply #${p.e.reply_id}</b> · ${p.cn.label}<br>${fmtT(p.t)} · ${p.hz} Hz · ${SHAPE_LABEL[p.e.out_contour_shape] || ''}`;
+    svg += `<g class="hit" ${tipAttr(tip)}><circle cx="${x(p.t)}" cy="${y(p.hz)}" r="10" fill="transparent"/>` +
+      (p.kind === 'baby'
+        ? `<circle class="mk" cx="${x(p.t)}" cy="${y(p.hz)}" r="5" fill="${p.cn.color}" stroke="var(--surface)" stroke-width="2"/>`
+        : `<circle class="mk" cx="${x(p.t)}" cy="${y(p.hz)}" r="4.5" fill="var(--surface)" stroke="${p.cn.color}" stroke-width="2.5"/>`) + `</g>`;
+  }
+  $('#pitch').innerHTML = svg + '</svg>';
+}
+
+/* ---------------------------- heat tables ---------------------------- */
+const SEQ = ['--seq-1', '--seq-2', '--seq-3', '--seq-4', '--seq-5', '--seq-6', '--seq-7'];
+const SEQ_DARK_TEXT = [true, true, true, false, false, false, false];
+function heat(id, items, field) {
+  const shapes = CactusMetrics.SHAPES.filter(sh => items.some(it => it.list.some(e => e[field] === sh)));
+  if (!shapes.length) { $(id).innerHTML = '<div class="empty">No tune data yet.</div>'; return; }
+  let h = `<table class="heat"><tr><th>Condition</th>${shapes.map(sh => `<th class="num" style="text-align:center">${SHAPE_LABEL[sh]}</th>`).join('')}<th class="num">n</th></tr>`;
+  for (const it of items) {
+    const n = it.list.length;
+    h += `<tr><td><span class="sw" style="background:${it.cn.color}"></span>${it.cn.label}</td>`;
+    for (const sh of shapes) {
+      const k = it.list.filter(e => e[field] === sh).length, share = n ? k / n : 0;
+      if (!k) { h += `<td class="cell" style="color:var(--faint)">–</td>`; continue; }
+      const idx = Math.min(6, Math.floor(share * 7));
+      h += `<td class="cell" style="background:var(${SEQ[idx]});color:${SEQ_DARK_TEXT[idx] ? '#0b0b0b' : '#ffffff'}" ${tipAttr(`<b>${it.cn.label}</b> · ${SHAPE_LABEL[sh]}<br>${k} of ${n} (${Math.round(share * 100)}%)`)}>${Math.round(share * 100)}%<small>${k}</small></td>`;
+    }
+    h += `<td class="num">${n}</td></tr>`;
+  }
+  $(id).innerHTML = h + '</table>';
+}
+function drawHeat(d) {
+  heat('#heat-baby', d.present.map(cn => ({ cn, list: d.vocs.filter(v => v.cond_key === cn.key) })), 'contour_shape');
+  heat('#heat-toy', d.present.map(cn => ({ cn, list: d.reps.filter(r => r.cond_key === cn.key) })), 'out_contour_shape');
+}
+
+/* ----------------------------- table view ---------------------------- */
+function drawTable(d) {
+  const cols = [['Active min', 'active_min'], ['Sounds', 'vocalizations'], ['Per min', 'voc_per_min'], ['Replies', 'replies'], ['Answered', 'answered_replies'],
+    ['Resp. rate', r => pct(r.response_rate)], ['Latency', r => r.mean_baby_latency_ms === '' ? '–' : fmtSec(r.mean_baby_latency_ms)],
+    ['Toy delay', r => r.mean_toy_delay_ms === '' ? '–' : fmtSec(r.mean_toy_delay_ms)], ['Chain', 'longest_turn_chain'], ['Interrupts', 'barge_in_vocs'],
+    ['Mean pitch', r => r.mean_voc_f0_hz === '' ? '–' : r.mean_voc_f0_hz + ' Hz']];
+  const rows = [{ cn: { label: 'Whole session', color: 'transparent' }, r: d.overall }, ...d.present.map(cn => ({ cn, r: d.rows.find(x => x.group === cn.key) }))];
+  $('#table').innerHTML = `<table><tr><th>Group</th>${cols.map(c => `<th class="num">${c[0]}</th>`).join('')}</tr>` +
+    rows.map(({ cn, r }) => `<tr><td>${cn.color !== 'transparent' ? `<span class="sw" style="background:${cn.color}"></span>` : ''}${cn.label}</td>${cols.map(([, f]) => `<td class="num">${typeof f === 'function' ? f(r) : (r[f] === '' ? '–' : r[f])}</td>`).join('')}</tr>`).join('') + '</table>';
+}
+
+/* ------------------------------ tooltip ------------------------------ */
+const tip = $('#tip');
+function showTip(t, cx, cy) {
+  tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = cx + 14, y = cy + 14;
+  if (x + r.width > innerWidth - 8) x = cx - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = cy - r.height - 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+document.addEventListener('pointermove', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t) showTip(t, e.clientX, e.clientY); else tip.hidden = true; });
+document.addEventListener('focusin', e => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t) { const r = t.getBoundingClientRect(); showTip(t, r.left + r.width / 2, r.top); } });
+document.addEventListener('focusout', () => tip.hidden = true);
+
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 150); });
+render();
+</script>
+</body>
+</html>
