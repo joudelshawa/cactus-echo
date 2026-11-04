@@ -181,6 +181,11 @@ details[open] summary{margin-bottom:10px}
           <span class="small muted" id="dbText">–</span>
         </div>
         <div class="meter"><div class="fill" id="meterFill"></div><div class="floor" id="meterFloor"></div><div class="mark" id="meterMark"></div></div>
+        <div class="row" style="margin-top:10px;gap:8px;align-items:center">
+          <label class="small muted" for="micSelect">Input</label>
+          <select id="micSelect" style="flex:1;min-width:0" disabled><option>Turn on the microphone first</option></select>
+        </div>
+        <div class="small" id="micWarn" role="alert" style="display:none;margin-top:8px;color:var(--danger,#c0392b)"></div>
       </div>
 
       <div class="card">
@@ -629,7 +634,46 @@ let micOn = false, playing = false, currentSrc = null, pendingTimer = null, igno
 let lastVoc = null, vocCounter = 0, replyCounter = 0;
 let state = 'off';
 
-let micPromise = null;
+let micPromise = null, micSrc = null, micNode = null, silentSince = 0, lastChunkAt = 0;
+const MIC_KEY = 'cactusEcho.mic.v1';
+const micConstraints = id => ({ audio: Object.assign({ echoCancellation: true, noiseSuppression: false, autoGainControl: false, channelCount: 1 }, id ? { deviceId: { exact: id } } : {}) });
+async function openMicStream() {
+  const saved = store.get(MIC_KEY, '');
+  try { return await navigator.mediaDevices.getUserMedia(micConstraints(saved)); }
+  catch (e) { if (saved && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) { store.del(MIC_KEY); return navigator.mediaDevices.getUserMedia(micConstraints('')); } throw e; }
+}
+function attachStream(stream) {
+  if (micStream && micStream !== stream) micStream.getTracks().forEach(t => t.stop());
+  if (micSrc) try { micSrc.disconnect(); } catch (e) {}
+  micStream = stream; micSrc = ctx.createMediaStreamSource(stream); micSrc.connect(micNode);
+  const tr = stream.getAudioTracks()[0];
+  if (tr) { tr.onmute = checkMicHealth; tr.onunmute = checkMicHealth; tr.onended = checkMicHealth; }
+  det.hist = []; silentSince = 0; checkMicHealth(); fillMicList();
+}
+async function fillMicList() {
+  const sel = $('#micSelect');
+  let devs = [];
+  try { devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput'); } catch (e) {}
+  const cur = micStream && micStream.getAudioTracks()[0], curId = cur && cur.getSettings ? cur.getSettings().deviceId : '';
+  sel.innerHTML = '';
+  devs.forEach((d, i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || ('Microphone ' + (i + 1)); if (d.deviceId === curId) o.selected = true; sel.appendChild(o); });
+  if (!devs.length) sel.innerHTML = '<option>No microphones found</option>';
+  sel.disabled = !devs.length;
+}
+async function switchMic(id) {
+  try { const st = await navigator.mediaDevices.getUserMedia(micConstraints(id)); store.set(MIC_KEY, id); attachStream(st); }
+  catch (e) { showMicWarn('Could not switch to that microphone: ' + (e.message || e.name)); fillMicList(); }
+}
+function showMicWarn(msg) { const w = $('#micWarn'); w.textContent = msg || ''; w.style.display = msg ? '' : 'none'; }
+function checkMicHealth() {
+  if (!micOn) return;
+  const tr = micStream && micStream.getAudioTracks()[0], name = tr ? '"' + (tr.label || 'microphone') + '"' : 'the microphone';
+  if (!tr || tr.readyState === 'ended') return showMicWarn('The microphone stopped (unplugged or taken by another app). Pick an input above.');
+  if (ctx && ctx.state !== 'running') return showMicWarn('Audio is paused by the browser. Click anywhere on the page to resume.');
+  if (performance.now() - lastChunkAt > 1500) return showMicWarn('No audio is arriving from ' + name + '. Pick another input above.');
+  if (tr.muted || (silentSince && performance.now() - silentSince > 2000)) return showMicWarn('No sound from ' + name + '. Pick another input above, or check that Chrome is allowed to use the microphone in macOS System Settings → Privacy & Security → Microphone.');
+  showMicWarn('');
+}
 // only ever build one audio pipeline, even if Start is clicked while the mic is still starting
 function startMic() {
   if (!micPromise) micPromise = startMicOnce().then(ok => { if (!ok) micPromise = null; return ok; });
@@ -642,17 +686,16 @@ async function startMicOnce() {
       process(ins){const ch=ins[0]&&ins[0][0];if(ch){for(let i=0;i<ch.length;i++){this.b[this.n++]=ch[i];if(this.n===1024){this.port.postMessage(this.b.slice(0));this.n=0;}}}return true;}}
       registerProcessor('cap',Cap);`;
     await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
-    const src = ctx.createMediaStreamSource(micStream);
-    const node = new AudioWorkletNode(ctx, 'cap', { numberOfInputs: 1, numberOfOutputs: 1 });
+    const stream = await openMicStream();
+    const node = micNode = new AudioWorkletNode(ctx, 'cap', { numberOfInputs: 1, numberOfOutputs: 1 });
     const sink = ctx.createGain(); sink.gain.value = 0;
-    src.connect(node); node.connect(sink); sink.connect(ctx.destination);
+    node.connect(sink); sink.connect(ctx.destination);
     node.port.onmessage = e => onChunk(e.data);
     outGain = ctx.createGain(); outGain.gain.value = settings.volume;
     analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
     outGain.connect(analyser); analyser.connect(ctx.destination);
     if (ctx.state === 'suspended') await ctx.resume();
-    micOn = true;
+    micOn = true; lastChunkAt = performance.now(); attachStream(stream);
     $('#micBtn').textContent = 'Microphone on'; $('#micBtn').disabled = true; $('#micBtn').classList.remove('primary');
     setState();
     return true;
@@ -671,6 +714,8 @@ function onChunk(buf) {
   const now = performance.now(), chunkMs = buf.length / ctx.sampleRate * 1000;
   let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
   const db = 20 * Math.log10(Math.sqrt(s / buf.length) + 1e-9);
+  lastChunkAt = now;
+  if (db < -100) { if (!silentSince) silentSince = now; } else if (silentSince) { silentSince = 0; checkMicHealth(); }
   // background noise = 15th percentile of the last ~5 s of mic levels (excluding the toy's own playback)
   if (!playing && now >= ignoreUntil && db > -100) {
     det.hist.push(db); if (det.hist.length > 240) det.hist.shift();
@@ -1161,6 +1206,10 @@ bindToggle('showCharacter', () => $('#stage').classList.toggle('hidechar', !sett
 $('#stage').classList.toggle('hidechar', !settings.showCharacter);
 
 $('#micBtn').addEventListener('click', () => startMic());
+$('#micSelect').addEventListener('change', e => switchMic(e.target.value));
+if (navigator.mediaDevices) navigator.mediaDevices.addEventListener('devicechange', () => micOn && fillMicList());
+document.addEventListener('pointerdown', () => { if (ctx && ctx.state === 'suspended') ctx.resume().then(checkMicHealth); });
+setInterval(checkMicHealth, 1000);
 $('#startBtn').addEventListener('click', startSession);
 $('#pauseBtn').addEventListener('click', togglePause);
 $('#endBtn').addEventListener('click', endSession);
